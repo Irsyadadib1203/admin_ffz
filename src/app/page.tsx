@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import useSWR from "swr";
 import {
   DollarSign,
@@ -28,16 +28,25 @@ export default function DashboardPage() {
     { refreshInterval: 15000 }
   );
 
-  // Initial load via REST; SSE handles live updates thereafter
+  const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
+  const categoryFilterRef = useRef(categoryFilter);
+  useEffect(() => {
+    categoryFilterRef.current = categoryFilter;
+  }, [categoryFilter]);
+
+  // Initial load via REST (fetches 20 latest transactions matching active game filter); SSE handles live updates thereafter
+  const swrKey = categoryFilter === "Semua"
+    ? "/admin/dashboard/recent-transactions?limit=20"
+    : `/admin/dashboard/recent-transactions?limit=20&game_name=${encodeURIComponent(categoryFilter)}`;
+
   const { data: initialTxs, mutate: refreshTxs } = useSWR(
-    "/admin/dashboard/recent-transactions?limit=20",
+    swrKey,
     fetcher,
     { refreshInterval: 0 }
   );
 
   const [liveTxs, setLiveTxs] = useState<any[] | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
 
   // Load daftar game untuk dropdown filter kategori game (Free Fire, Mobile Legends, dll)
   const { data: games } = useSWR("/admin/games?limit=500", (u: string) =>
@@ -85,15 +94,10 @@ export default function DashboardPage() {
     }
   };
 
-  // Merge: use live state once available, otherwise fall back to REST data
-  const allTxs = liveTxs ?? initialTxs;
-  const recentTxs = (allTxs || []).filter((tx: any) => {
-    if (categoryFilter === "Semua") return true;
-    const gName = tx.game_name || "";
-    return gName.toLowerCase() === categoryFilter.toLowerCase();
-  });
+  // Data transaksi terbaru yang sudah otomatis difilter 20 teratas dari database sesuai game
+  const recentTxs = liveTxs ?? initialTxs ?? [];
 
-  // Sync live state from SWR whenever initial fetch or manual refresh happens
+  // Sync live state from SWR whenever initial fetch or game filter changes
   useEffect(() => {
     if (initialTxs) {
       setLiveTxs(initialTxs);
@@ -131,15 +135,23 @@ export default function DashboardPage() {
         try {
           const evt = JSON.parse(e.data);
           if (evt.type === "tx_update" && evt.payload) {
-            setLiveTxs((prev) => {
-              const base = prev ?? [];
-              // Newest tx at top, deduplicate by id, max 20
-              const updated = [
-                evt.payload,
-                ...base.filter((t: any) => t.id !== evt.payload.id),
-              ];
-              return updated.slice(0, 20);
-            });
+            const currentFilter = categoryFilterRef.current;
+            const matchesFilter =
+              currentFilter === "Semua" ||
+              (evt.payload.game_name &&
+                evt.payload.game_name.toLowerCase() === currentFilter.toLowerCase());
+
+            if (matchesFilter) {
+              setLiveTxs((prev) => {
+                const base = prev ?? [];
+                // Newest tx at top, deduplicate by id, max 20
+                const updated = [
+                  evt.payload,
+                  ...base.filter((t: any) => t.id !== evt.payload.id),
+                ];
+                return updated.slice(0, 20);
+              });
+            }
           }
         } catch {
           // ignore malformed events

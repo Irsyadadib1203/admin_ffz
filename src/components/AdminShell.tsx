@@ -29,6 +29,7 @@ const pathToResourceMap: Record<string, string> = {
   "/settings": "settings",
   "/currencies": "settings",
   "/providers": "settings",
+  "/voca": "settings",
   "/roles": "roles",
 };
 
