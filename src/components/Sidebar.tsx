@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname } from "next/navigation";
@@ -25,17 +26,27 @@ import {
   CircleDollarSign,
   Scale,
   Coins,
+  ChevronDown,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 
 const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
 
-interface NavItem {
+interface SubNavItem {
   name: string;
   href: string;
+  resource: string;
+}
+
+interface NavItem {
+  name: string;
+  href?: string;
   icon: any;
   resource: string;
+  children?: SubNavItem[];
 }
 
 const allNavItems: NavItem[] = [
@@ -47,7 +58,16 @@ const allNavItems: NavItem[] = [
   { name: "Perbandingan Harga", href: "/price-compare", icon: Scale, resource: "nominals" },
   { name: "Banner & Promo", href: "/banners", icon: Image, resource: "banners" },
   { name: "Berita & Artikel", href: "/articles", icon: Newspaper, resource: "articles" },
-  { name: "Providers Center", href: "/providers", icon: Zap, resource: "settings" },
+  { name: "Provider", href: "/providers", icon: Zap, resource: "settings" },
+  {
+    name: "Provider Center",
+    icon: Layers,
+    resource: "settings",
+    children: [
+      { name: "Kiosgamer Center", href: "/kiosgamer", resource: "kiosgamer" },
+      { name: "Digiflazz Center", href: "/digiflazz", resource: "digiflazz" },
+    ],
+  },
   { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
   { name: "IP Whitelist & Security", href: "/ip-whitelist", icon: ShieldCheck, resource: "ip_whitelist" },
   { name: "Users & Resellers", href: "/users", icon: Users, resource: "users" },
@@ -68,6 +88,18 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const currentUser = getStoredUser();
   const isSuperAdmin = currentUser?.role === "superadmin";
 
+  const isProviderCenterActive =
+    pathname.startsWith("/kiosgamer") || pathname.startsWith("/digiflazz");
+  const [providerCenterExpanded, setProviderCenterExpanded] = useState(
+    isProviderCenterActive
+  );
+
+  useEffect(() => {
+    if (isProviderCenterActive) {
+      setProviderCenterExpanded(true);
+    }
+  }, [pathname, isProviderCenterActive]);
+
   const { data: permData } = useSWR(
     currentUser ? "/admin/rbac/my-permissions" : null,
     fetcher
@@ -78,6 +110,14 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
   // Filter accessible navigation items
   const accessibleItems = allNavItems.filter((item) => {
+    if (item.children) {
+      if (isSuperAdmin) return true;
+      return (
+        item.children.some((child) =>
+          permData?.permissions?.includes(child.resource)
+        ) || permData?.permissions?.includes(item.resource)
+      );
+    }
     // Roles management is strictly for superadmin
     if (item.resource === "roles") {
       return isSuperAdmin;
@@ -155,6 +195,65 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         {/* Navigation Links */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           {accessibleItems.map((item) => {
+            if (item.children) {
+              const isParentActive = item.children.some((c) => pathname.startsWith(c.href));
+              const Icon = item.icon;
+              return (
+                <div key={item.name} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setProviderCenterExpanded((prev: boolean) => !prev)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isParentActive
+                        ? "text-white bg-slate-800/80"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${isParentActive ? "text-amber-400" : "text-slate-400"}`} />
+                      <span>{item.name}</span>
+                    </div>
+                    {providerCenterExpanded ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 transition-transform" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 transition-transform" />
+                    )}
+                  </button>
+
+                  {providerCenterExpanded && (
+                    <div className="pl-6 pr-1 space-y-1 py-1 border-l border-slate-800 ml-4">
+                      {item.children.map((child) => {
+                        const isChildActive = pathname === child.href;
+                        return (
+                          <Link
+                            key={child.name}
+                            href={child.href}
+                            onClick={() => {
+                              if (typeof window !== "undefined" && window.innerWidth < 768) {
+                                onClose?.();
+                              }
+                            }}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              isChildActive
+                                ? "bg-indigo-600 text-white font-semibold shadow-sm shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isChildActive ? "bg-white" : "bg-slate-500"
+                              }`}
+                            />
+                            <span>{child.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             const isActive = pathname === item.href;
             const Icon = item.icon;
             const isRoleItem = item.resource === "roles";
@@ -162,7 +261,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                href={item.href!}
                 onClick={() => {
                   if (typeof window !== "undefined" && window.innerWidth < 768) {
                     onClose?.();

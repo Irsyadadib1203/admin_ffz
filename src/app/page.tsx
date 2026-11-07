@@ -39,6 +39,14 @@ export default function DashboardPage() {
   const [sseConnected, setSseConnected] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
 
+  // Load daftar game untuk dropdown filter kategori game (Free Fire, Mobile Legends, dll)
+  const { data: games } = useSWR("/admin/games?limit=500", (u: string) =>
+    api.get(u).then((r) => {
+      const list = Array.isArray(r.data?.data) ? r.data.data : [];
+      return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    })
+  );
+
   const formatDuration = (ms: number) => {
     if (!Number.isFinite(ms) || ms < 0) return "-";
     if (ms < 1000) return `${Math.floor(ms)} ms`;
@@ -46,9 +54,9 @@ export default function DashboardPage() {
     return `${(Math.floor(ms / 600) / 100).toFixed(2)} m`;
   };
 
+  // Sama persis dengan perhitungan di Pusat Transaksi (/transactions)
   const calculateSpeed = (tx: any) => {
     if (!tx) return "-";
-    if (tx.speed && tx.speed !== "-") return tx.speed;
     const startTime = new Date(tx.payment_verified_at || tx.created_at).getTime();
     const endTime = tx.completed_at
       ? new Date(tx.completed_at).getTime()
@@ -81,8 +89,8 @@ export default function DashboardPage() {
   const allTxs = liveTxs ?? initialTxs;
   const recentTxs = (allTxs || []).filter((tx: any) => {
     if (categoryFilter === "Semua") return true;
-    const cat = tx.category || tx.game_category || "Games";
-    return cat.toLowerCase() === categoryFilter.toLowerCase();
+    const gName = tx.game_name || "";
+    return gName.toLowerCase() === categoryFilter.toLowerCase();
   });
 
   // Sync live state from SWR whenever initial fetch or manual refresh happens
@@ -317,20 +325,21 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Filter Kategori Game */}
+            {/* Filter Kategori Game (Free Fire, Mobile Legends, dll) */}
             <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1.5">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer max-w-[170px]"
                 aria-label="Filter kategori game"
               >
-                <option value="Semua" className="bg-slate-900 text-white">Semua Kategori</option>
-                <option value="Games" className="bg-slate-900 text-white">Games</option>
-                <option value="Voucher" className="bg-slate-900 text-white">Voucher</option>
-                <option value="Entertainment" className="bg-slate-900 text-white">Entertainment</option>
-                <option value="Pulsa & PLN" className="bg-slate-900 text-white">Pulsa & PLN</option>
+                <option value="Semua" className="bg-slate-900 text-white">Semua Game</option>
+                {games?.map((g: any) => (
+                  <option key={g.id} value={g.name} className="bg-slate-900 text-white">
+                    {g.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -366,25 +375,17 @@ export default function DashboardPage() {
                     <td className="py-3.5 px-4 font-semibold text-slate-100">
                       {formatRupiah(tx.total_amount)}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] text-indigo-300 font-medium">
-                        {tx.category || tx.game_category || "Games"}
-                      </span>
+                    <td className="py-3.5 px-4 font-semibold text-white">
+                      {tx.game_name || "-"}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-white">{tx.game_name}</span>
-                        <span className="text-[11px] text-slate-400">{tx.nominal_name}</span>
-                      </div>
+                    <td className="py-3.5 px-4 text-slate-300 font-medium">
+                      {tx.nominal_name || "-"}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">
                       {formatDateTime(tx.created_at)}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono text-[11px] font-semibold">
-                        <Zap className="w-3 h-3 text-amber-400" />
-                        {calculateSpeed(tx)}
-                      </span>
+                    <td className="py-3.5 px-4 min-w-[100px] font-semibold text-slate-100 whitespace-nowrap">
+                      {calculateSpeed(tx)}
                     </td>
                     <td className="py-3.5 pl-4">
                       <span
@@ -409,7 +410,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500">
-                    {categoryFilter !== "Semua" ? `Belum ada transaksi untuk kategori ${categoryFilter}.` : "Belum ada transaksi top-up terbaru."}
+                    {categoryFilter !== "Semua" ? `Belum ada transaksi untuk game ${categoryFilter}.` : "Belum ada transaksi top-up terbaru."}
                   </td>
                 </tr>
               )}

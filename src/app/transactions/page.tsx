@@ -475,91 +475,6 @@ const getProviderName = (tx: any) =>
             Monitoring dan eksekusi transaksi pelanggan, H2H, serta respon realtime provider
           </p>
         </div>
-      </div>
-
-      {/* Provider Status Quick Filter Cards (Processing & Pending) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Card 1: Provider Status Processing */}
-        <button
-          type="button"
-          onClick={() => {
-            setProviderStatusFilter((prev) => (prev === "Processing" ? "" : "Processing"));
-            setPage(1);
-          }}
-          className={`p-4 rounded-2xl border transition-all flex items-center justify-between text-left group ${
-            providerStatusFilter === "Processing"
-              ? "bg-gradient-to-br from-amber-950/60 to-slate-900 border-amber-500/60 shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/30"
-              : "bg-gradient-to-br from-amber-950/20 to-slate-900 border-amber-500/20 hover:border-amber-500/40"
-          }`}
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-              <Clock className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-white">Status Provider: Processing</h4>
-                {providerStatusFilter === "Processing" && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-bold uppercase tracking-wider">
-                    Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Sedang diproses oleh engine upstream provider
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-xl font-extrabold text-amber-400">
-              {providerStats?.processing_count ?? 0}
-            </span>
-            <p className="text-[10px] text-slate-400 font-medium">Order</p>
-          </div>
-        </button>
-
-        {/* Card 2: Provider Status Pending */}
-        <button
-          type="button"
-          onClick={() => {
-            setProviderStatusFilter((prev) => (prev === "Pending" ? "" : "Pending"));
-            setPage(1);
-          }}
-          className={`p-4 rounded-2xl border transition-all flex items-center justify-between text-left group ${
-            providerStatusFilter === "Pending"
-              ? "bg-gradient-to-br from-sky-950/60 to-slate-900 border-sky-500/60 shadow-lg shadow-sky-500/10 ring-1 ring-sky-500/30"
-              : "bg-gradient-to-br from-sky-950/20 to-slate-900 border-sky-500/20 hover:border-sky-500/40"
-          }`}
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform">
-              <RefreshCw className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-white">Status Provider: Pending</h4>
-                {providerStatusFilter === "Pending" && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500 text-slate-950 font-bold uppercase tracking-wider">
-                    Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Menunggu giliran &amp; konfirmasi respons provider
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-xl font-extrabold text-sky-400">
-              {providerStats?.pending_count ?? 0}
-            </span>
-            <p className="text-[10px] text-slate-400 font-medium">Order</p>
-          </div>
-        </button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div></div>
 
         
         <div className="flex flex-wrap items-center gap-3">
@@ -687,6 +602,69 @@ const getProviderName = (tx: any) =>
           </div>
         </div>
       )}
+
+      {/* Provider Status Quick Filter Cards (Minimalist & Elegant) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Processing Card */}
+        <button
+          type="button"
+          onClick={() => {
+            setProviderStatusFilter((prev) => (prev === "Processing" ? "" : "Processing"));
+            setPage(1);
+          }}
+          className={`px-4 py-2.5 rounded-xl border transition-all flex items-center justify-between text-left group ${
+            providerStatusFilter === "Processing"
+              ? "bg-amber-500/10 border-amber-500/50 text-amber-200 ring-1 ring-amber-500/30 shadow-md shadow-amber-500/5"
+              : "bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300 hover:bg-slate-800/40"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs font-semibold">Status Provider: Processing</span>
+            {providerStatusFilter === "Processing" && (
+              <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                Aktif
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 font-mono">
+            <span className="text-sm font-bold text-amber-400">
+              {providerStats?.processing_count ?? 0}
+            </span>
+            <span className="text-[10px] text-slate-500">order</span>
+          </div>
+        </button>
+
+        {/* Pending Card */}
+        <button
+          type="button"
+          onClick={() => {
+            setProviderStatusFilter((prev) => (prev === "Pending" ? "" : "Pending"));
+            setPage(1);
+          }}
+          className={`px-4 py-2.5 rounded-xl border transition-all flex items-center justify-between text-left group ${
+            providerStatusFilter === "Pending"
+              ? "bg-sky-500/10 border-sky-500/50 text-sky-200 ring-1 ring-sky-500/30 shadow-md shadow-sky-500/5"
+              : "bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300 hover:bg-slate-800/40"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-sky-400" />
+            <span className="text-xs font-semibold">Status Provider: Pending</span>
+            {providerStatusFilter === "Pending" && (
+              <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 uppercase tracking-wider">
+                Aktif
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 font-mono">
+            <span className="text-sm font-bold text-sky-400">
+              {providerStats?.pending_count ?? 0}
+            </span>
+            <span className="text-[10px] text-slate-500">order</span>
+          </div>
+        </button>
+      </div>
 
       {/* Transactions Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
