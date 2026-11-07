@@ -209,20 +209,6 @@ export default function DashboardPage() {
               Live
             </span>
           )}
-          <Link
-            href="/kiosgamer"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-indigo-600/20 transition-all"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Kiosgamer Center
-          </Link>
-          <Link
-            href="/digiflazz"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-indigo-600/20 transition-all"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Digiflazz Center
-          </Link>
         </div>
       </div>
 
