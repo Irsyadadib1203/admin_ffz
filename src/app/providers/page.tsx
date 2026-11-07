@@ -73,6 +73,16 @@ type ExcellentStoreSettings = {
   secret_configured: boolean;
 };
 
+type VocaSettings = {
+  configured: boolean;
+  name: string;
+  base_url: string;
+  merchant_id: string;
+  is_active: boolean;
+  secret_key_configured: boolean;
+  callback_key_configured: boolean;
+};
+
 type ASMarketSettings = {
   configured: boolean;
   name: string;
@@ -166,6 +176,12 @@ export default function ProvidersPage() {
   const [digi, setDigi] = useState<DigiflazzSettings | null>(null);
   const [digiUsername, setDigiUsername] = useState("");
   const [digiSecret, setDigiSecret] = useState("");
+
+  // Voca State
+const [voca, setVoca] = useState<VocaSettings | null>(null);
+const [vocaMerchantId, setVocaMerchantId] = useState("");
+const [vocaSecretKey, setVocaSecretKey] = useState("");
+const [vocaCallbackKey, setVocaCallbackKey] = useState("");
 
   // ExcellentStore State
   const [excellent, setExcellent] = useState<ExcellentStoreSettings | null>(null);
@@ -295,6 +311,9 @@ export default function ProvidersPage() {
 	  setExcellentSecret("");
     setExcellent(null);
     setAsmarket(null);
+    setVoca(null);
+    setVocaSecretKey("");
+    setVocaCallbackKey("");
     setFFZ(null);
     setDigi(null);
     setVexagame(null);
@@ -372,6 +391,18 @@ export default function ProvidersPage() {
         setName(data.name);
         setBaseURL(data.base_url);
         setSipasMemberId(data.member_id || "");
+        setIsActive(data.is_active);
+      } catch {
+        // fallback
+      }
+      } else if (code === "VOCA") {
+      try {
+        const res = await api.get("/admin/providers/voca");
+        const data: VocaSettings = res.data.data;
+        setVoca(data);
+        setName(data.name);
+        setBaseURL(data.base_url);
+        setVocaMerchantId(data.merchant_id || "");
         setIsActive(data.is_active);
       } catch {
         // fallback
@@ -528,6 +559,31 @@ export default function ProvidersPage() {
       setNotice("Konfigurasi SIPAS tersimpan.");
     } catch (error: any) {
       setNotice(error.response?.data?.message || "Gagal menyimpan SIPAS.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveVoca = async () => {
+    setSaving(true);
+    setNotice("");
+    try {
+      await api.put("/admin/providers/voca", {
+        name,
+        base_url: baseURL,
+        merchant_id: vocaMerchantId,
+        secret_key: vocaSecretKey,
+        callback_key: vocaCallbackKey,
+        is_active: isActive,
+      });
+      setVocaSecretKey("");
+      setVocaCallbackKey("");
+      const fresh = await api.get("/admin/providers/voca");
+      setVoca(fresh.data.data);
+      await mutate();
+      setNotice("Konfigurasi Voca tersimpan.");
+    } catch (error: any) {
+      setNotice(error.response?.data?.message || "Gagal menyimpan Voca.");
     } finally {
       setSaving(false);
     }
@@ -1367,6 +1423,64 @@ export default function ProvidersPage() {
               </div>
             )}
 
+            {/* VOCA MODAL CONTENT */}
+            {selected.code.toUpperCase() === "VOCA" && (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Base URL Voca</label>
+                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
+                    placeholder="https://api-bisnis.vocagame.com/v1/core"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Merchant ID</label>
+                  <input value={vocaMerchantId} onChange={(e) => setVocaMerchantId(e.target.value)}
+                    placeholder="xxxx-xxx-xx-xxx-xxxxxx"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Secret Key{" "}
+                    {voca?.secret_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input type="password" value={vocaSecretKey} onChange={(e) => setVocaSecretKey(e.target.value)}
+                      placeholder={voca?.secret_key_configured ? "Kosongkan untuk mempertahankan Secret Key" : "Masukkan Secret Key"}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Callback Key{" "}
+                    {voca?.callback_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
+                  </label>
+                  <div className="relative">
+                    <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input type="password" value={vocaCallbackKey} onChange={(e) => setVocaCallbackKey(e.target.value)}
+                      placeholder={voca?.callback_key_configured ? "Kosongkan untuk mempertahankan Callback Key" : "Dari dashboard Voca (header X-Callback-Key)"}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
+                  <span>Aktifkan Voca</span>
+                </label>
+                <div className="flex justify-end pt-2">
+                  <button onClick={saveVoca} disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
+                    <Save className="h-4 w-4" />
+                    {saving ? "Menyimpan..." : "Simpan Voca"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* OTHER / CUSTOM PROVIDER FALLBACK */}
             {selected.code.toUpperCase() !== "DIGIFLAZZ" &&
               selected.code.toUpperCase() !== "KIOSGAMER" &&
@@ -1375,6 +1489,7 @@ export default function ProvidersPage() {
               selected.code.toUpperCase() !== "MUMTAZSHOP" &&
               selected.code.toUpperCase() !== "BOSTGAME" &&
                selected.code.toUpperCase() !== "ASMARKET" && 
+               selected.code.toUpperCase() !== "VOCA" &&
                selected.code.toUpperCase() !== "EXCELLSTORE" &&
                selected.code.toUpperCase() !== "VEXAGAME" &&
                selected.code.toUpperCase() !== "SIPAS" && (  
