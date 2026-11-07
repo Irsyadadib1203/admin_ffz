@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   CircleDollarSign,
   Scale,
+  Coins,
 } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -47,6 +48,7 @@ const allNavItems: NavItem[] = [
   { name: "Banner & Promo", href: "/banners", icon: Image, resource: "banners" },
   { name: "Berita & Artikel", href: "/articles", icon: Newspaper, resource: "articles" },
   { name: "Providers Center", href: "/providers", icon: Zap, resource: "settings" },
+  { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
   { name: "IP Whitelist & Security", href: "/ip-whitelist", icon: ShieldCheck, resource: "ip_whitelist" },
   { name: "Users & Resellers", href: "/users", icon: Users, resource: "users" },
   { name: "Deposits", href: "/deposits", icon: Wallet, resource: "deposits" },

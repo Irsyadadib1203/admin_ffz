@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Radio,
+  Filter,
 } from "lucide-react";
 import { api, API_BASE_URL } from "@/lib/api";
 import Link from "next/link";
@@ -36,9 +37,53 @@ export default function DashboardPage() {
 
   const [liveTxs, setLiveTxs] = useState<any[] | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
+
+  const formatDuration = (ms: number) => {
+    if (!Number.isFinite(ms) || ms < 0) return "-";
+    if (ms < 1000) return `${Math.floor(ms)} ms`;
+    if (ms < 60000) return `${(Math.floor(ms / 10) / 100).toFixed(2)} s`;
+    return `${(Math.floor(ms / 600) / 100).toFixed(2)} m`;
+  };
+
+  const calculateSpeed = (tx: any) => {
+    if (!tx) return "-";
+    if (tx.speed && tx.speed !== "-") return tx.speed;
+    const startTime = new Date(tx.payment_verified_at || tx.created_at).getTime();
+    const endTime = tx.completed_at
+      ? new Date(tx.completed_at).getTime()
+      : tx.status === "success" || tx.status === "failed" || tx.status === "refunded"
+      ? new Date(tx.updated_at || tx.created_at).getTime()
+      : (tx.status === "processing" || tx.status === "pending" ? Date.now() : null);
+
+    if (!startTime || !endTime || endTime < startTime) return "-";
+    return formatDuration(endTime - startTime);
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return "-";
+    try {
+      const d = new Date(dateStr);
+      return new Intl.DateTimeFormat("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(d);
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Merge: use live state once available, otherwise fall back to REST data
-  const recentTxs = liveTxs ?? initialTxs;
+  const allTxs = liveTxs ?? initialTxs;
+  const recentTxs = (allTxs || []).filter((tx: any) => {
+    if (categoryFilter === "Semua") return true;
+    const cat = tx.category || tx.game_category || "Games";
+    return cat.toLowerCase() === categoryFilter.toLowerCase();
+  });
 
   // Sync live state from SWR whenever initial fetch or manual refresh happens
   useEffect(() => {
@@ -252,60 +297,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Action Banner */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          href="/digiflazz"
-          className="p-4 rounded-2xl bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/20 hover:border-indigo-500/40 transition-all flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-white">Digiflazz H2H Sync</h4>
-              <p className="text-xs text-slate-400">Tarik katalog &amp; atur markup harga</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
-        </Link>
-
-        <Link
-          href="/ip-whitelist"
-          className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-white">IP Whitelist Mitra</h4>
-              <p className="text-xs text-slate-400">Kelola akses aman koneksi H2H</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
-        </Link>
-
-        <Link
-          href="/deposits"
-          className="p-4 rounded-2xl bg-gradient-to-br from-amber-900/40 to-slate-900 border border-amber-500/20 hover:border-amber-500/40 transition-all flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-              <Receipt className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-white">Persetujuan Deposit</h4>
-              <p className="text-xs text-slate-400">Verifikasi saldo member &amp; reseller</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
-        </Link>
-      </div>
 
       {/* Recent Live Transactions */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
             <h3 className="text-base font-semibold text-white flex items-center gap-2">
               Transaksi Terkini (Live Feed)
@@ -320,12 +315,32 @@ export default function DashboardPage() {
               Transaksi top-up game yang baru saja diproses oleh engine
             </p>
           </div>
-          <Link
-            href="/transactions"
-            className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-          >
-            Lihat Semua Transaksi &rarr;
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            {/* Filter Kategori Game */}
+            <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1.5">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                aria-label="Filter kategori game"
+              >
+                <option value="Semua" className="bg-slate-900 text-white">Semua Kategori</option>
+                <option value="Games" className="bg-slate-900 text-white">Games</option>
+                <option value="Voucher" className="bg-slate-900 text-white">Voucher</option>
+                <option value="Entertainment" className="bg-slate-900 text-white">Entertainment</option>
+                <option value="Pulsa & PLN" className="bg-slate-900 text-white">Pulsa & PLN</option>
+              </select>
+            </div>
+
+            <Link
+              href="/transactions"
+              className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 whitespace-nowrap"
+            >
+              Lihat Semua &rarr;
+            </Link>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -333,11 +348,11 @@ export default function DashboardPage() {
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 font-medium pb-3">
                 <th className="pb-3 pr-4">Invoice</th>
-                <th className="pb-3 px-4">Game</th>
-                <th className="pb-3 px-4">Item / Nominal</th>
-                <th className="pb-3 px-4">User ID Game</th>
-                <th className="pb-3 px-4">Total</th>
-                <th className="pb-3 px-4">Metode</th>
+                <th className="pb-3 px-4">Harga</th>
+                <th className="pb-3 px-4">Kategori</th>
+                <th className="pb-3 px-4">Nominal</th>
+                <th className="pb-3 px-4">Tanggal</th>
+                <th className="pb-3 px-4">Speed</th>
                 <th className="pb-3 pl-4">Status</th>
               </tr>
             </thead>
@@ -348,19 +363,27 @@ export default function DashboardPage() {
                     <td className="py-3.5 pr-4 font-mono font-medium text-slate-200">
                       {tx.invoice_number}
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-white">
-                      {tx.game_name}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-300">{tx.nominal_name}</td>
-                    <td className="py-3.5 px-4 font-mono text-slate-400">
-                      {tx.customer_id}
-                    </td>
                     <td className="py-3.5 px-4 font-semibold text-slate-100">
                       {formatRupiah(tx.total_amount)}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] text-slate-300">
-                        {tx.payment_method}
+                      <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] text-indigo-300 font-medium">
+                        {tx.category || tx.game_category || "Games"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-white">{tx.game_name}</span>
+                        <span className="text-[11px] text-slate-400">{tx.nominal_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">
+                      {formatDateTime(tx.created_at)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono text-[11px] font-semibold">
+                        <Zap className="w-3 h-3 text-amber-400" />
+                        {calculateSpeed(tx)}
                       </span>
                     </td>
                     <td className="py-3.5 pl-4">
@@ -386,7 +409,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500">
-                    Belum ada transaksi top-up terbaru.
+                    {categoryFilter !== "Semua" ? `Belum ada transaksi untuk kategori ${categoryFilter}.` : "Belum ada transaksi top-up terbaru."}
                   </td>
                 </tr>
               )}

@@ -27,6 +27,8 @@ const pathToResourceMap: Record<string, string> = {
   "/payment-methods": "payment_methods",
   "/docs": "docs",
   "/settings": "settings",
+  "/currencies": "settings",
+  "/providers": "settings",
   "/roles": "roles",
 };
 
