@@ -61,7 +61,7 @@ export default function DashboardPage() {
     const endTime = tx.completed_at
       ? new Date(tx.completed_at).getTime()
       : tx.status === "success" || tx.status === "failed" || tx.status === "refunded"
-      ? new Date(tx.updated_at || tx.created_at).getTime()
+      ? new Date(tx.updated_at).getTime()
       : (tx.status === "processing" || tx.status === "pending" ? Date.now() : null);
 
     if (!startTime || !endTime || endTime < startTime) return "-";
