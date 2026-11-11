@@ -91,6 +91,22 @@ type ASMarketSettings = {
   api_key_configured: boolean;
 };
 
+type OnoystoreSettings = {
+  configured: boolean;
+  name: string;
+  base_url: string;
+  is_active: boolean;
+  api_key_configured: boolean;
+};
+
+type TopupKuySettings = {
+  configured: boolean;
+  name: string;
+  base_url: string;
+  is_active: boolean;
+  api_key_configured: boolean;
+};
+
 // [TAMBAH] tipe, di bawah ASMarketSettings
 type VexagameSettings = {
   configured: boolean;
@@ -189,6 +205,12 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
 
     // ASMarket State
   const [asmarket, setAsmarket] = useState<ASMarketSettings | null>(null);
+
+  // Onoystore State
+  const [onoystore, setOnoystore] = useState<OnoystoreSettings | null>(null);
+
+  // TopupKuy State
+  const [topupkuy, setTopupkuy] = useState<TopupKuySettings | null>(null);
 
   // Vexagame State
   const [vexagame, setVexagame] = useState<VexagameSettings | null>(null);
@@ -311,6 +333,8 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
 	  setExcellentSecret("");
     setExcellent(null);
     setAsmarket(null);
+    setOnoystore(null);
+    setTopupkuy(null);
     setVoca(null);
     setVocaSecretKey("");
     setVocaCallbackKey("");
@@ -377,6 +401,28 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
         const res = await api.get("/admin/providers/vexagame");
         const data: VexagameSettings = res.data.data;
         setVexagame(data);
+        setName(data.name);
+        setBaseURL(data.base_url);
+        setIsActive(data.is_active);
+      } catch {
+        // fallback
+      }
+      } else if (code === "ONOYSTORE") {
+      try {
+        const res = await api.get("/admin/providers/onoystore");
+        const data: OnoystoreSettings = res.data.data;
+        setOnoystore(data);
+        setName(data.name);
+        setBaseURL(data.base_url);
+        setIsActive(data.is_active);
+      } catch {
+        // fallback
+      }
+    } else if (code === "TOPUPKUY") {
+      try {
+        const res = await api.get("/admin/providers/topupkuy");
+        const data: TopupKuySettings = res.data.data;
+        setTopupkuy(data);
         setName(data.name);
         setBaseURL(data.base_url);
         setIsActive(data.is_active);
@@ -509,6 +555,49 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       setNotice(`Konfigurasi ${selected?.name || "provider"} tersimpan.`);
     } catch (error: any) {
       setNotice(error.response?.data?.message || `Gagal menyimpan ${selected?.name || "provider"}.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveOnoystore = async () => {
+    setSaving(true);
+    setNotice("");
+    try {
+      await api.put("/admin/providers/onoystore", {
+        name,
+        base_url: baseURL,
+        api_key: apiKey,
+        is_active: isActive,
+      });
+      setAPIKey("");
+      const fresh = await api.get("/admin/providers/onoystore");
+      setOnoystore(fresh.data.data);
+      await mutate();
+      setNotice("Konfigurasi Onoystore tersimpan.");
+    } catch (error: any) {
+      setNotice(error.response?.data?.message || "Gagal menyimpan Onoystore.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveTopupKuy = async () => {
+    setSaving(true);
+    setNotice("");
+    try {
+      await api.put("/admin/providers/topupkuy", {
+        name,
+        base_url: baseURL,
+        api_key: apiKey,
+        is_active: isActive,
+      });
+      setAPIKey("");
+      const fresh = await api.get("/admin/providers/topupkuy");
+      setTopupkuy(fresh.data.data);
+      await mutate();
+      setNotice("Konfigurasi TopupKuy tersimpan.");
+    } catch (error: any) {
+      setNotice(error.response?.data?.message || "Gagal menyimpan TopupKuy.");
     } finally {
       setSaving(false);
     }
@@ -1365,6 +1454,92 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
                 </div>
               </div>
             )}
+
+            {/* ONOYSTORE MODAL CONTENT */}
+            {selected.code.toUpperCase() === "ONOYSTORE" && (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Base URL Onoystore</label>
+                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
+                    placeholder="https://api.onoystore.id/v1/public"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    API Key Onoystore{" "}
+                    {onoystore?.api_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input type="password" value={apiKey} onChange={(e) => setAPIKey(e.target.value)}
+                      placeholder={onoystore?.api_key_configured ? "Kosongkan untuk mempertahankan API key saat ini" : "Masukkan API key Onoystore"}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Signature callback Onoystore (X-Signature) divalidasi memakai API key di atas, jadi tidak perlu webhook secret terpisah.
+                </p>
+                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
+                  <span>Aktifkan Onoystore</span>
+                </label>
+                <div className="flex justify-end pt-2">
+                  <button onClick={saveOnoystore} disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
+                    <Save className="h-4 w-4" />
+                    {saving ? "Menyimpan..." : "Simpan Onoystore"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TOPUPKUY MODAL CONTENT */}
+            {selected.code.toUpperCase() === "TOPUPKUY" && (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Base URL TopupKuy</label>
+                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
+                    placeholder="https://api.topupkuy.id/v1"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    API Key TopupKuy{" "}
+                    {topupkuy?.api_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input type="password" value={apiKey} onChange={(e) => setAPIKey(e.target.value)}
+                      placeholder={topupkuy?.api_key_configured ? "Kosongkan untuk mempertahankan API key saat ini" : "Masukkan API key TopupKuy"}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Signature callback TopupKuy (X-Signature) divalidasi memakai API key di atas, jadi tidak perlu webhook secret terpisah.
+                </p>
+                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
+                  <span>Aktifkan TopupKuy</span>
+                </label>
+                <div className="flex justify-end pt-2">
+                  <button onClick={saveTopupKuy} disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
+                    <Save className="h-4 w-4" />
+                    {saving ? "Menyimpan..." : "Simpan TopupKuy"}
+                  </button>
+                </div>
+              </div>
+            )}
             {/* SIPAS MODAL CONTENT */}
             {selected.code.toUpperCase() === "SIPAS" && (
               <div className="space-y-4 text-xs">
@@ -1488,6 +1663,8 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
               selected.code.toUpperCase() !== "EXCELLENTSTORE" && 
               selected.code.toUpperCase() !== "MUMTAZSHOP" &&
               selected.code.toUpperCase() !== "BOSTGAME" &&
+              selected.code.toUpperCase() !== "ONOYSTORE" &&
+              selected.code.toUpperCase() !== "TOPUPKUY" &&
                selected.code.toUpperCase() !== "ASMARKET" && 
                selected.code.toUpperCase() !== "VOCA" &&
                selected.code.toUpperCase() !== "EXCELLSTORE" &&
