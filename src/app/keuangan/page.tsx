@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import {
@@ -113,6 +113,51 @@ export default function KeuanganPage() {
       onSuccess: () => setLastRefreshedAt(new Date()),
     }
   );
+  const { data: currencies } = useSWR<{ code: string; rate_to_idr: number }[]>(
+  "/admin/currencies",
+  fetcher
+);
+
+const rateFor = (unit?: string) => {
+  if (!unit || unit.toUpperCase() === "IDR") return 1;
+  return (
+    currencies?.find((c) => c.code.toUpperCase() === unit.toUpperCase())
+      ?.rate_to_idr ?? 1
+  );
+};
+
+  const sortedProviders = useMemo(() => {
+  if (!data?.providers) return [];
+
+  const list = data.providers.map((p) => {
+    const rate = rateFor(p.balance_unit);
+    return {
+      ...p,
+      rate,
+      spent_idr: Math.round((p.total_spent ?? 0) * rate),
+      balance_idr: Math.round((p.balance ?? 0) * rate),
+    };
+  });
+
+  const total = list.reduce((s, p) => s + p.spent_idr, 0);
+
+  return list
+    .map((p) => ({
+      ...p,
+      percentage: total > 0 ? Math.round((p.spent_idr / total) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => {
+      const diff = b.spent_idr - a.spent_idr;
+      if (diff !== 0) return diff;
+      const txDiff = (b.total_transactions ?? 0) - (a.total_transactions ?? 0);
+      if (txDiff !== 0) return txDiff;
+      return a.provider_name.localeCompare(b.provider_name);
+    });
+}, [data?.providers, currencies]);
+
+const totalSpentIdr = sortedProviders.reduce((s, p) => s + p.spent_idr, 0);
+const rateByProvider = (id: number) =>
+  sortedProviders.find((p) => p.provider_id === id)?.rate ?? 1;
 
   const formatRupiah = (val?: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -356,7 +401,7 @@ export default function KeuanganPage() {
           </div>
           <div className="mt-3">
             <p className="text-2xl font-black text-emerald-400 tracking-tight">
-              {formatRupiah(data?.total_spent)}
+              {formatRupiah(totalSpentIdr)}
             </p>
             <p className="mt-1 text-[11px] text-slate-400 leading-tight">
               Modal provider yang terpotong untuk transaksi sukses
@@ -497,16 +542,16 @@ export default function KeuanganPage() {
         </div>
 
         {/* Visual Share Bar (Stacked Progress) */}
-        {data && (data.total_spent || 0) > 0 && (
+        {data && totalSpentIdr > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Distribusi Penggunaan Saldo:</span>
               <span className="font-mono text-emerald-400 font-bold">
-                Total: {formatRupiah(data.total_spent)}
+                Total: {formatRupiah(totalSpentIdr)}
               </span>
             </div>
             <div className="h-4 w-full rounded-full bg-slate-950 p-0.5 overflow-hidden flex border border-slate-800">
-              {data.providers.map((p, idx) => {
+              {sortedProviders.map((p, idx) => {
                 if (p.percentage <= 0) return null;
                 const col = providerColors[idx % providerColors.length];
                 return (
@@ -514,7 +559,7 @@ export default function KeuanganPage() {
                     key={p.provider_id}
                     style={{ width: `${Math.max(p.percentage, 3)}%` }}
                     className={`${col.bg} h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full`}
-                    title={`${p.provider_name}: ${formatRupiah(p.total_spent)} (${p.percentage}%)`}
+                    title={`${p.provider_name}: ${formatRupiah(p.spent_idr)} (${p.percentage}%)`}
                   />
                 );
               })}
@@ -524,7 +569,7 @@ export default function KeuanganPage() {
 
         {/* Provider Cards Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data?.providers?.map((provider, idx) => {
+          {sortedProviders.map((provider, idx) => {
             const col = providerColors[idx % providerColors.length];
             const isChecking = checkingProviderId === provider.provider_id;
 
@@ -563,8 +608,13 @@ export default function KeuanganPage() {
                       </span>
                     </div>
                     <div className="text-xl font-black text-emerald-400">
-                      {formatRupiah(provider.total_spent)}
+                      {formatRupiah(provider.spent_idr)}
                     </div>
+                    {provider.rate !== 1 && (
+                      <p className="text-[10px] text-slate-500">
+                        {(provider.total_spent ?? 0).toLocaleString("id-ID")} {provider.balance_unit} × {provider.rate}
+                      </p>
+                    )}
                     {/* Proportion bar */}
                     <div className="w-full h-1.5 rounded-full bg-emerald-950 overflow-hidden">
                       <div
@@ -593,12 +643,17 @@ export default function KeuanganPage() {
                     </div>
                     <div className="flex items-baseline justify-between">
                       <span className="text-lg font-black text-white">
-                        {formatBalance(provider.balance, provider.balance_unit)}
+                        {formatRupiah(provider.balance_idr)}
                       </span>
                       <span className="text-[10px] text-slate-500">
                         {provider.balance_checked_at ? formatDate(provider.balance_checked_at) : "Belum dicek"}
                       </span>
                     </div>
+                    {provider.rate !== 1 && (
+                      <p className="text-[10px] text-slate-500">
+                        {formatBalance(provider.balance, provider.balance_unit)} × {provider.rate}
+                      </p>
+                    )}
                   </div>
 
                   {/* Rincian Transaksi */}
@@ -694,7 +749,7 @@ export default function KeuanganPage() {
           >
             Semua ({data?.transactions?.length || 0})
           </button>
-          {data?.providers?.map((p) => {
+          {sortedProviders.map((p) => {
             const count = (data?.transactions || []).filter(
               (t) => t.provider_id === p.provider_id || t.provider?.code === p.provider_code
             ).length;
@@ -765,7 +820,7 @@ export default function KeuanganPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-emerald-400 whitespace-nowrap">
-                      {formatRupiah(tx.base_price)}
+                      {formatRupiah(Math.round(tx.base_price * rateByProvider(tx.provider_id)))}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-200 whitespace-nowrap">
                       {formatRupiah(tx.total_amount || tx.selling_price)}

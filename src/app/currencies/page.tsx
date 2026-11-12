@@ -81,6 +81,13 @@ export default function CurrenciesPage() {
       maximumFractionDigits: 0,
     }).format(val || 0);
   };
+  const formatRate = (val: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  }).format(val || 0);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -229,7 +236,7 @@ export default function CurrenciesPage() {
             >
               {currencies?.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.code} - {c.name} ({formatRupiah(c.rate_to_idr)})
+                  {c.code} - {c.name} ({formatRate(c.rate_to_idr)})
                 </option>
               ))}
             </select>
@@ -303,7 +310,7 @@ export default function CurrenciesPage() {
                       <div className="flex items-center gap-1.5 font-mono">
                         <span className="text-slate-400 text-[11px]">1 {item.code} =</span>
                         <span className="font-bold text-emerald-400 text-sm">
-                          {formatRupiah(item.rate_to_idr)}
+                          {formatRate(item.rate_to_idr)}
                         </span>
                       </div>
                     </td>
