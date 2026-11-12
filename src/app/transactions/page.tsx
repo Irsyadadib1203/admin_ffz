@@ -258,6 +258,10 @@ export default function TransactionsPage() {
   const canRetryTransaction = (status?: string) =>
     status === "pending" || status === "processing";
 
+  // Cek status ke provider hanya relevan selama transaksi belum final
+  const canCheckStatus = (status?: string) =>
+    status === "pending" || status === "processing";
+
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -807,6 +811,7 @@ const getProviderName = (tx: any) =>
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         {/* Tombol 1: Cek Status Provider (Hanya Get Status, Tidak Memotong Saldo) */}
+                      {canCheckStatus(tx.status) && (
                         <button
                           onClick={() => handleCheckStatus(tx)}
                           disabled={checkingStatusTxId === tx.id}
@@ -815,6 +820,7 @@ const getProviderName = (tx: any) =>
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${checkingStatusTxId === tx.id ? "animate-spin" : ""}`} />
                         </button>
+                      )}
                       </div>
                     </td>
                   </tr>
@@ -1007,6 +1013,7 @@ const getProviderName = (tx: any) =>
                 Request dan respons terakhir disimpan otomatis tanpa credential provider.
               </p>
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {canCheckStatus(responseModal.tx.status) && (
                 <button
                   onClick={() => handleCheckStatus(responseModal.tx)}
                   disabled={checkingStatusTxId === responseModal.tx.id}
@@ -1016,6 +1023,7 @@ const getProviderName = (tx: any) =>
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingStatusTxId === responseModal.tx.id ? "animate-spin" : ""}`} />
                   Cek Status Provider
                 </button>
+              )}
                 {canRetryTransaction(responseModal.tx.status) && (
                   <button
                     onClick={() => {
@@ -1156,6 +1164,7 @@ const getProviderName = (tx: any) =>
             <div className="pt-3 border-t border-slate-800 space-y-2.5">
             {/* Baris 1: aksi baca / cek */}
             <div className="flex flex-wrap gap-2">
+              {canCheckStatus(selectedTx.status) && (
               <button
                 onClick={() => handleCheckStatus(selectedTx)}
                 disabled={checkingStatusTxId === selectedTx.id}
@@ -1165,6 +1174,7 @@ const getProviderName = (tx: any) =>
                 <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${checkingStatusTxId === selectedTx.id ? "animate-spin" : ""}`} />
                 Cek Status Provider
               </button>
+            )}
 
               <button
                 onClick={() => {
