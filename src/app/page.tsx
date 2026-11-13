@@ -4,15 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import useSWR from "swr";
 import {
   DollarSign,
-  TrendingUp,
   Receipt,
   CheckCircle2,
   Clock,
   XCircle,
-  Zap,
+  Wallet,
+  Package,
   RefreshCw,
-  ShieldCheck,
-  ArrowUpRight,
   Radio,
   Filter,
 } from "lucide-react";
@@ -27,6 +25,39 @@ export default function DashboardPage() {
     fetcher,
     { refreshInterval: 15000 }
   );
+  // Saldo provider (dibaca dari DB, tidak menembak provider)
+const { data: providerList } = useSWR<any[]>("/admin/providers", fetcher, {
+  refreshInterval: 15000,
+});
+
+// Saldo Shell (Kiosgamer) tidak sebanding dengan Rupiah, jadi tidak dijumlahkan
+const idrProviders = (providerList ?? []).filter(
+  (p) => String(p.balance_unit || "IDR").toUpperCase() !== "SHELL"
+);
+const totalProviderBalance = idrProviders.reduce(
+  (sum, p) => sum + (Number(p.balance) || 0),
+  0
+);
+
+  // Jumlah produk (nominal) aktif & nonaktif: limit=1, ambil total dari meta paginasi
+  const countFetcher = (url: string) =>
+    api.get(url).then((r) => {
+      const d = r.data;
+      return Number(
+        d?.meta?.total ?? d?.pagination?.total ?? d?.total ?? d?.data?.total ?? 0
+      );
+    });
+  const { data: activeProducts, isLoading: activeLoading } = useSWR(
+    "/admin/nominals?limit=1&is_active=true",
+    countFetcher,
+    { refreshInterval: 60000 }
+  );
+  const { data: inactiveProducts, isLoading: inactiveLoading } = useSWR(
+    "/admin/nominals?limit=1&is_active=false",
+    countFetcher,
+    { refreshInterval: 60000 }
+  );
+  const productsLoading = activeLoading || inactiveLoading;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
   const categoryFilterRef = useRef(categoryFilter);
@@ -226,7 +257,7 @@ export default function DashboardPage() {
 
       {/* Main Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Revenue */}
+        {/* 1. Total Revenue */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Total Pendapatan</span>
@@ -244,25 +275,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Total Profit */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Laba Bersih (Margin)</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-bold text-white">
-              {statsLoading ? "Memuat..." : formatRupiah(stats?.total_profit)}
-            </h3>
-            <p className="text-[11px] text-indigo-400 mt-1 flex items-center gap-1 font-medium">
-              <span>Laba Hari ini: {formatRupiah(stats?.today_profit)}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Total Orders */}
+        {/* 2. Total Orders */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Total Transaksi</span>
@@ -284,21 +297,47 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Digiflazz Balance */}
+        {/* 3. Akumulasi Saldo Provider */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Saldo Digiflazz Provider</span>
+            <span className="text-xs font-medium text-slate-400">Akumulasi Saldo Provider</span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Zap className="w-4 h-4" />
+              <Wallet className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-xl font-bold text-amber-300">
-              {statsLoading ? "Memuat..." : formatRupiah(stats?.digiflazz_balance)}
+              {!providerList ? "Memuat..." : formatRupiah(totalProviderBalance)}
             </h3>
             <p className="text-[11px] text-slate-400 mt-1">
-              Digunakan untuk fulfillment otomatis
+              Gabungan {idrProviders.length} provider (Rupiah)
             </p>
+          </div>
+        </div>
+
+        {/* 4. Total Produk Aktif & Nonaktif */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">Total Produk</span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+              <Package className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <h3 className="text-xl font-bold text-white">
+              {productsLoading
+                ? "Memuat..."
+                : ((activeProducts ?? 0) + (inactiveProducts ?? 0)).toLocaleString("id-ID")}
+            </h3>
+            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+              <span className="text-emerald-400 font-medium">
+                {(activeProducts ?? 0).toLocaleString("id-ID")} Aktif
+              </span>
+              <span>•</span>
+              <span className="text-rose-400 font-medium">
+                {(inactiveProducts ?? 0).toLocaleString("id-ID")} Nonaktif
+              </span>
+            </div>
           </div>
         </div>
       </div>

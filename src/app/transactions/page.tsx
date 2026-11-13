@@ -320,6 +320,13 @@ const getProviderName = (tx: any) =>
   providers?.find((p: any) => p.id === tx?.provider_id)?.name ||
   tx?.nominal?.provider?.name ||
   "-";
+  const providerStatusClass = (status?: string) => {
+  const s = status || "";
+  if (/sukses|success/i.test(s)) return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  if (/gagal|failed|error/i.test(s)) return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+  if (/pending|processing/i.test(s)) return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+  return "bg-slate-800 text-slate-400 border border-slate-700";
+};
 
   const providerExchange = (tx: any) => {
     const fallbackRequest = {
@@ -472,13 +479,7 @@ const getProviderName = (tx: any) =>
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white">Pusat Transaksi Top-Up</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Monitoring dan eksekusi transaksi pelanggan, H2H, serta respon realtime provider
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
 
         
         <div className="flex flex-wrap items-center gap-3">
@@ -679,14 +680,14 @@ const getProviderName = (tx: any) =>
                 <th className="py-3.5 pl-5 pr-2 w-8">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
               </th>
-                <th className="py-3.5 px-5">Invoice & Waktu</th>
-                <th className="py-3.5 px-4">Game & Nominal</th>
-                <th className="py-3.5 px-4">Tujuan Akun</th>
-                <th className="py-3.5 px-4">Total Bayar</th>
-                <th className="py-3.5 px-4 min-w-[120px]">Speed</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-center">Response Provider</th>
-                <th className="py-3.5 px-5 text-center">Aksi</th>
+                <th className="py-3.5 px-5 text-center">INVOICE & WAKTU</th>
+                <th className="py-3.5 px-4 text-center">NOMINAL & GAME</th>
+                <th className="py-3.5 px-4 text-center">Tujuan</th>
+                <th className="py-3.5 px-4 text-center">HARGA</th>
+                <th className="py-3.5 px-4 min-w-[120px] text-center">SPEED</th>
+                <th className="py-3.5 px-4 text-center">STATUS</th>
+                <th className="py-3.5 px-4 text-center">RESPONSE</th>
+                <th className="py-3.5 px-5 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -696,8 +697,8 @@ const getProviderName = (tx: any) =>
                     <td className="py-3.5 pl-5 pr-2">
                       <input type="checkbox" checked={selectedIds.includes(tx.id)} onChange={() => toggleOne(tx.id)} disabled={tx.status !== "processing"} className="accent-indigo-500 disabled:opacity-30" />
                     </td>
-                    <td className="py-3.5 px-5">
-                      <div>
+                    <td className="py-3.5 px-4">
+                      <div className="space-y-1">
                         <a
                           href={`${PUBLIC_CLIENT_URL}/invoice/${tx.invoice_number}`}
                           target="_blank"
@@ -711,24 +712,14 @@ const getProviderName = (tx: any) =>
                         <span className="text-[10px] text-slate-500 block">
                           {new Date(tx.created_at).toLocaleString("id-ID")}
                         </span>
-                        {tx.sn && (
-                          <span className="text-[10px] font-mono text-emerald-400 block truncate max-w-[160px]" title={tx.sn}>
-                            SN: {tx.sn}
-                          </span>
-                        )}
-                        {tx.provider_order_id && (
-                          <span className="text-[10px] font-mono text-sky-400 block truncate max-w-[160px]" title={tx.provider_order_id}>
-                            Order ID: {tx.provider_order_id}
-                          </span>
-                        )}
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div>
+                        <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
                         <span className="font-semibold text-white block">
                           {tx.game?.name || "-"}
                         </span>
-                        <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
                       </div>
                     </td>
                     <td className="py-3.5 px-4 font-mono">
@@ -748,61 +739,37 @@ const getProviderName = (tx: any) =>
                     </td>
                     
                     <td className="py-3.5 px-4">
-                      <div className="flex flex-col items-start gap-1.5">
-                        {/* Status transaksi internal */}
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            tx.status === "success"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : tx.status === "processing" || tx.status === "pending"
-                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                              : tx.status === "refunded"
-                              ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                          }`}
-                        >
-                          {tx.status?.toUpperCase() || "UNKNOWN"}
-                        </span>
-
-                        {/* Status dari provider */}
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-slate-500">
-                            Provider
-                          </span>
-
-                          <span
-                            className={`text-[11px] font-medium break-words ${
-                              /sukses|success/i.test(tx.provider_status || "")
-                                ? "text-emerald-400"
-                                : /gagal|failed|error/i.test(tx.provider_status || "")
-                                ? "text-rose-400"
-                                : /pending|processing/i.test(tx.provider_status || "")
-                                ? "text-amber-300"
-                                : "text-slate-400"
-                            }`}
-                            title={tx.provider_status || "Belum ada status provider"}
-                          >
-                            {tx.provider_status || "Belum ada status provider"}
-                          </span>
-                        </div>
-                      </div>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${providerStatusClass(tx.provider_status)}`}
+                        title={`Status transaksi: ${tx.status || "-"}`}
+                      >
+                        {(tx.provider_status || "BELUM ADA").toUpperCase()}
+                      </span>
                     </td>
 
 
                     {/* Response Provider Column */}
                     <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => setResponseModal({ isOpen: true, tx, copied: false })}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 border border-indigo-500/25 text-[11px] font-medium transition-all shadow-sm group"
-                        title="Klik untuk melihat Raw JSON Response Provider / Callback"
-                      >
-                        <Code2 className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                        <span>Response JSON</span>
-                      </button>
+                      <div className="flex flex-col items-start gap-1.5">
+                        <button
+                          onClick={() => setResponseModal({ isOpen: true, tx, copied: false })}
+                          className="inline-flex items-center gap-1.5 max-w-[200px] px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 border border-indigo-500/25 text-[11px] font-mono font-medium transition-all group"
+                          title="Klik untuk melihat Request & Response Provider"
+                        >
+                          <Code2 className="w-3.5 h-3.5 shrink-0 text-indigo-400 group-hover:scale-110 transition-transform" />
+                          <span className="truncate">
+                            {tx.provider_order_id && tx.provider_order_id !== "-" ? tx.provider_order_id : "Lihat Response"}
+                          </span>
+                        </button>
+                        <span className="inline-flex items-center gap-1 pl-0.5 text-[10px] text-slate-400">
+                          <Server className="w-3 h-3 text-slate-500" />
+                          {getProviderName(tx)}
+                        </span>
+                      </div>
                     </td>
 
-                    <td className="py-3.5 px-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setSelectedTx(tx)}
                           className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"

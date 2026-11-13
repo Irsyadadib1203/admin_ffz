@@ -4,22 +4,8 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import {
-  CircleDollarSign,
-  Receipt,
-  TrendingUp,
-  Wallet,
-  RefreshCw,
-  Calendar,
-  Layers,
-  ArrowUpRight,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  HelpCircle,
-  Filter,
-  Search,
-  ExternalLink,
-  Zap,
+  CircleDollarSign, Receipt, Wallet, RefreshCw, Calendar, Layers,
+  CheckCircle2, ExternalLink, Zap, Bot, User,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -57,6 +43,8 @@ type TransactionItem = {
   status: string;
   created_at: string;
   game?: { id: number; name: string };
+  user_id?: number;
+  user?: { id: number; name: string };
   nominal?: { id: number; name: string };
   provider?: { id: number; name: string; code: string };
 };
@@ -100,9 +88,6 @@ export default function KeuanganPage() {
   const [notice, setNotice] = useState<string>("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
-  // Table filters
-  const [selectedProviderFilter, setSelectedProviderFilter] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const { data, mutate, isValidating } = useSWR<FinanceSummary>(
     `/admin/finance/summary?date=${selectedDate}`,
@@ -158,6 +143,24 @@ const rateFor = (unit?: string) => {
 const totalSpentIdr = sortedProviders.reduce((s, p) => s + p.spent_idr, 0);
 const rateByProvider = (id: number) =>
   sortedProviders.find((p) => p.provider_id === id)?.rate ?? 1;
+// Isi dengan ID asli dari database
+const ALEX_USER_ID = 6;
+const JOSJIS_USER_ID = 8;
+
+const spentByUser = (userId: number) => {
+  const txs = (data?.transactions || []).filter(
+    (tx) => tx.status === "success" && tx.user_id === userId
+  );
+  const total = txs.reduce(
+    (s, tx) => s + Math.round((tx.base_price || 0) * rateByProvider(tx.provider_id)),
+    0
+  );
+  const displayName = txs[0]?.user?.name; // nama terbaru dari backend
+  return { total, count: txs.length, displayName };
+};
+
+const alexUsage = spentByUser(ALEX_USER_ID);
+const josjisUsage = spentByUser(JOSJIS_USER_ID);
 
   const formatRupiah = (val?: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -182,14 +185,6 @@ const rateByProvider = (id: number) =>
     });
   };
 
-  const formatTimeOnly = (dateStr?: string) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
 
   // Trigger manual refresh for both stats and provider live balances
   const handleRefreshAll = async () => {
@@ -236,23 +231,6 @@ const rateByProvider = (id: number) =>
     { bg: "bg-rose-500", text: "text-rose-400", border: "border-rose-500/30", fill: "bg-rose-500/10" },
   ];
 
-  // Filtered transactions for the table
-  const filteredTransactions = (data?.transactions || []).filter((tx) => {
-    const matchProvider =
-      selectedProviderFilter === "ALL" ||
-      String(tx.provider_id) === selectedProviderFilter ||
-      tx.provider?.code === selectedProviderFilter;
-
-    const q = searchQuery.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      tx.invoice_number.toLowerCase().includes(q) ||
-      tx.customer_id.toLowerCase().includes(q) ||
-      (tx.game?.name && tx.game.name.toLowerCase().includes(q)) ||
-      (tx.nominal?.name && tx.nominal.name.toLowerCase().includes(q));
-
-    return matchProvider && matchSearch;
-  });
 
   const isToday = selectedDate === todayStr;
 
@@ -457,63 +435,58 @@ const rateByProvider = (id: number) =>
           </div>
         </div>
 
-        {/* Card 3: TOTAL OMZET PENJUALAN */}
+        {/* Card 3: PENGGUNAAN SALDO ALEX GAMING */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="font-bold uppercase tracking-wider text-[11px]">
-                Total Omzet Penjualan
+                Penggunaan Saldo {alexUsage.displayName ?? "Alex Gaming"} {isToday ? "Hari Ini" : ""}
               </span>
               <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
-                <TrendingUp className="h-4 w-4" />
+                <User className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-3">
               <p className="text-2xl font-black text-sky-400 tracking-tight">
-                {formatRupiah(data?.total_revenue)}
+                {formatRupiah(alexUsage.total)}
               </p>
               <p className="mt-1 text-[11px] text-slate-400">
-                Total pembayaran diterima dari transaksi sukses
+                Modal provider terpotong dari transaksi sukses Alex Gaming
               </p>
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Rata-rata/Tx:</span>
+            <span>Transaksi Sukses:</span>
             <span className="font-bold text-slate-200">
-              {data?.success_transactions
-                ? formatRupiah((data.total_revenue || 0) / data.success_transactions)
-                : "Rp 0"}
+              {alexUsage.count.toLocaleString("id-ID")} Tx
             </span>
           </div>
         </div>
 
-        {/* Card 4: ESTIMASI KEUNTUNGAN / PROFIT */}
+        {/* Card 4: PENGGUNAAN SALDO BOT JOSJIS */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="font-bold uppercase tracking-wider text-[11px]">
-                Estimasi Keuntungan (Profit)
+                Penggunaan Saldo {josjisUsage.displayName ?? "Bot Josjis"} {isToday ? "Hari Ini" : ""}
               </span>
               <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-                <ArrowUpRight className="h-4 w-4" />
+                <Bot className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-3">
               <p className="text-2xl font-black text-purple-400 tracking-tight">
-                {formatRupiah(data?.total_profit)}
+                {formatRupiah(josjisUsage.total)}
               </p>
               <p className="mt-1 text-[11px] text-slate-400">
-                Selisih harga jual dengan modal saldo provider
+                Modal provider terpotong dari transaksi sukses Bot Josjis
               </p>
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Profit Margin:</span>
-            <span className="font-bold text-purple-400">
-              {data?.total_revenue
-                ? (((data.total_profit || 0) / data.total_revenue) * 100).toFixed(1)
-                : 0}
-              %
+            <span>Transaksi Sukses:</span>
+            <span className="font-bold text-slate-200">
+              {josjisUsage.count.toLocaleString("id-ID")} Tx
             </span>
           </div>
         </div>
@@ -693,163 +666,9 @@ const rateByProvider = (id: number) =>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProviderFilter(String(provider.provider_id))}
-                    className="text-indigo-400 hover:text-indigo-300 font-semibold"
-                  >
-                    Lihat Transaksi Provider →
-                  </button>
-                </div>
               </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* SECTION: RINCIAN DAFTAR TRANSAKSI HARI INI */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white">
-              Daftar Transaksi & Penggunaan Saldo {isToday ? "Hari Ini" : selectedDate}
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Transaksi yang memotong saldo provider pada tanggal yang dipilih.
-            </p>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[240px]">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Cari Invoice, User ID, Game..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Filter Pills per Provider */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs custom-scrollbar">
-          <span className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 shrink-0">
-            <Filter className="h-3 w-3" /> Filter Provider:
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedProviderFilter("ALL")}
-            className={`px-3 py-1 rounded-xl font-semibold transition shrink-0 ${
-              selectedProviderFilter === "ALL"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-750"
-            }`}
-          >
-            Semua ({data?.transactions?.length || 0})
-          </button>
-          {sortedProviders.map((p) => {
-            const count = (data?.transactions || []).filter(
-              (t) => t.provider_id === p.provider_id || t.provider?.code === p.provider_code
-            ).length;
-            const isSel = selectedProviderFilter === String(p.provider_id);
-            return (
-              <button
-                key={p.provider_id}
-                type="button"
-                onClick={() => setSelectedProviderFilter(String(p.provider_id))}
-                className={`px-3 py-1 rounded-xl font-semibold transition shrink-0 ${
-                  isSel ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-750"
-                }`}
-              >
-                {p.provider_name} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Transaction Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-              <tr>
-                <th className="px-4 py-3">Waktu</th>
-                <th className="px-4 py-3">Invoice</th>
-                <th className="px-4 py-3">Game & Item</th>
-                <th className="px-4 py-3">Provider</th>
-                <th className="px-4 py-3 text-right">Saldo Terpakai (Modal)</th>
-                <th className="px-4 py-3 text-right">Harga Jual</th>
-                <th className="px-4 py-3 text-right">Profit</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 bg-slate-900/60">
-              {filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                    Tidak ada transaksi pada filter yang dipilih.
-                  </td>
-                </tr>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-800/40 transition">
-                    <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">
-                      {formatTimeOnly(tx.created_at)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <Link
-                        href={`/transactions?search=${tx.invoice_number}`}
-                        className="font-mono font-semibold text-indigo-400 hover:underline"
-                      >
-                        {tx.invoice_number}
-                      </Link>
-                      <p className="text-[10px] text-slate-500 font-mono">{tx.customer_id}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-white truncate max-w-[180px]">
-                        {tx.game?.name || `Game #${tx.game_id}`}
-                      </p>
-                      <p className="text-[11px] text-slate-400 truncate max-w-[180px]">
-                        {tx.nominal?.name || `Nominal #${tx.nominal_id}`}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                        {tx.provider?.name || tx.provider?.code || `ID ${tx.provider_id}`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-emerald-400 whitespace-nowrap">
-                      {formatRupiah(Math.round(tx.base_price * rateByProvider(tx.provider_id)))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-200 whitespace-nowrap">
-                      {formatRupiah(tx.total_amount || tx.selling_price)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-purple-400 whitespace-nowrap">
-                      +{formatRupiah(tx.profit)}
-                    </td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                      {tx.status === "success" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="h-3 w-3" /> Sukses
-                        </span>
-                      )}
-                      {(tx.status === "pending" || tx.status === "processing") && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                          <Clock className="h-3 w-3" /> {tx.status}
-                        </span>
-                      )}
-                      {(tx.status === "failed" || tx.status === "refunded") && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                          <XCircle className="h-3 w-3" /> {tx.status}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       </section>
     </div>
