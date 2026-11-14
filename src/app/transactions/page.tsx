@@ -260,10 +260,13 @@ export default function TransactionsPage() {
 
   // Cek status ke provider hanya relevan selama transaksi belum final
   // Tombol hanya muncul jika transaksi belum final DAN status provider bukan Processing
+// Tombol muncul hanya jika transaksi belum final, status provider sudah ada, dan bukan Processing
 const canCheckStatus = (tx?: any) => {
   if (!tx) return false;
   if (tx.status !== "pending" && tx.status !== "processing") return false;
-  return !/processing/i.test(tx.provider_status || "");
+  const ps = (tx.provider_status || "").trim();
+  if (!ps) return false;
+  return !/processing/i.test(ps);
 };
 
   const formatRupiah = (val: number) => {
@@ -540,7 +543,7 @@ const providerStatusClass = (status?: string) => {
                 value={startDate}
                 max={endDate || undefined}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
                 aria-label="Tanggal mulai"
               />
               <label className="text-xs text-slate-400">Sampai</label>
@@ -549,7 +552,7 @@ const providerStatusClass = (status?: string) => {
                 value={endDate}
                 min={startDate || undefined}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
                 aria-label="Tanggal akhir"
               />
             </div>
@@ -676,9 +679,9 @@ const providerStatusClass = (status?: string) => {
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
                 </th>
                 <th className="py-3.5 px-4 text-center min-w-[170px]">INVOICE & WAKTU</th>
-                <th className="py-3.5 px-4 text-center min-w-[220px]">NOMINAL & GAME</th>
-                <th className="py-3.5 px-4 text-center min-w-[200px]">TUJUAN</th>
-                <th className="py-3.5 px-4 text-center">HARGA</th>
+                <th className="py-3.5 px-4 text-center min-w-[190px]">NOMINAL & GAME</th>
+                <th className="py-3.5 px-4 text-center min-w-[170px]">TUJUAN</th>
+                <th className="py-3.5 px-4 text-center min-w-[100px]">HARGA</th>
                 <th className="py-3.5 px-3 text-center w-[80px]">SPEED</th>
                 <th className="py-3.5 px-4 text-center">STATUS</th>
                 <th className="py-3.5 px-4 text-center min-w-[150px]">ORDER ID</th>
@@ -709,13 +712,13 @@ const providerStatusClass = (status?: string) => {
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 min-w-[220px]">
+                    <td className="py-3.5 px-4 text-center min-w-[190px]">
                       <div>
                         <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
                         <span className="font-semibold text-white block">{tx.game?.name || "-"}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono min-w-[200px]">
+                    <td className="py-3.5 px-4 text-center font-mono min-w-[170px]">
                       <span className="text-slate-200 block">
                         {tx.customer_id}
                         {tx.server_id ? ` (${tx.server_id})` : ""}
@@ -724,7 +727,7 @@ const providerStatusClass = (status?: string) => {
                         {tx.user?.name || tx.user?.username || tx.user?.email || "Guest"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-center font-semibold text-slate-100 whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center min-w-[100px] font-semibold text-slate-100 whitespace-nowrap">
                       {formatRupiah(tx.total_amount)}
                     </td>
                     <td className="py-3.5 px-3 text-center w-[80px] font-semibold text-slate-100 whitespace-nowrap">
