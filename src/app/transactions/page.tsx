@@ -259,8 +259,12 @@ export default function TransactionsPage() {
     status === "pending" || status === "processing";
 
   // Cek status ke provider hanya relevan selama transaksi belum final
-  const canCheckStatus = (status?: string) =>
-    status === "pending" || status === "processing";
+  // Tombol hanya muncul jika transaksi belum final DAN status provider bukan Processing
+const canCheckStatus = (tx?: any) => {
+  if (!tx) return false;
+  if (tx.status !== "pending" && tx.status !== "processing") return false;
+  return !/processing/i.test(tx.provider_status || "");
+};
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -320,11 +324,23 @@ const getProviderName = (tx: any) =>
   providers?.find((p: any) => p.id === tx?.provider_id)?.name ||
   tx?.nominal?.provider?.name ||
   "-";
-  const providerStatusClass = (status?: string) => {
-  const s = status || "";
-  if (/sukses|success/i.test(s)) return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-  if (/gagal|failed|error/i.test(s)) return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
-  if (/pending|processing/i.test(s)) return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+  const providerStatusBase = (status?: string) => (status || "").split("(")[0].trim();
+
+const providerStatusLabel = (status?: string) => {
+  const s = providerStatusBase(status);
+  if (!s) return "Belum Ada";
+  if (/sukses|success/i.test(s)) return "Sukses";
+  if (/gagal|failed|error/i.test(s)) return "Gagal";
+  if (/processing/i.test(s)) return "Processing";
+  if (/pending/i.test(s)) return "Pending";
+  return s;
+};
+
+const providerStatusClass = (status?: string) => {
+  const label = providerStatusLabel(status);
+  if (label === "Sukses") return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  if (label === "Gagal") return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+  if (label === "Processing" || label === "Pending") return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
   return "bg-slate-800 text-slate-400 border border-slate-700";
 };
 
@@ -479,122 +495,101 @@ const getProviderName = (tx: any) =>
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex flex-col gap-3">
+          {/* Baris 1: filter */}
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={providerFilter}
+              onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Semua Provider</option>
+              {providers?.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
 
-        
-        <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={providerFilter}
-          onChange={(e) => {
-            setProviderFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-        >
-          <option value="">Semua Provider</option>
-          {providers?.map((p: any) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-          <select
-            value={gameFilter}
-            onChange={(e) => {
-              setGameFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
-            aria-label="Filter game"
-          >
-            <option value="">Semua Game</option>
-            {games?.map((g: any) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={providerStatusFilter}
-            onChange={(e) => {
-              setProviderStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="">Semua Status Provider</option>
-            <option value="Pending">Pending</option>
-            <option value="Processing">Processing</option>
-            <option value="Sukses">Sukses</option>
-            <option value="Gagal">Gagal</option>
-          </select>
+            <select
+              value={gameFilter}
+              onChange={(e) => { setGameFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
+              aria-label="Filter game"
+            >
+              <option value="">Semua Game</option>
+              {games?.map((g: any) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-slate-400">Dari</label>
-            <input
-              type="date"
-              value={startDate}
-              max={endDate || undefined}
-              onChange={(e) => {
-                setStartDate(e.target.value);
+            <select
+              value={providerStatusFilter}
+              onChange={(e) => { setProviderStatusFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Semua Status Provider</option>
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Sukses">Sukses</option>
+              <option value="Gagal">Gagal</option>
+            </select>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-400">Dari</label>
+              <input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                aria-label="Tanggal mulai"
+              />
+              <label className="text-xs text-slate-400">Sampai</label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                aria-label="Tanggal akhir"
+              />
+            </div>
+
+            <button
+              onClick={() => mutate()}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
+              title="Refresh Data"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => {
+                setProviderFilter("");
+                setGameFilter("");
+                setProviderStatusFilter("");
+                setStartDate("");
+                setEndDate("");
+                setSearch("");
                 setPage(1);
               }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              aria-label="Tanggal mulai"
-            />
-
-            <label className="text-xs text-slate-400">Sampai</label>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate || undefined}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPage(1);
-              }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              aria-label="Tanggal akhir"
-            />
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
+            >
+              Reset Filter
+            </button>
           </div>
 
-          <div className="relative">
+          {/* Baris 2: search (selalu di baris sendiri) */}
+          <div className="relative w-full max-w-sm">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder="Cari invoice / user ID..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-52"
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
-
-          <button
-            onClick={() => mutate()}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
-            title="Refresh Data"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => {
-              setProviderFilter("");
-              setGameFilter("");
-              setProviderStatusFilter("");
-              setStartDate("");
-              setEndDate("");
-              setSearch("");
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
-          >
-            Reset Filter
-          </button>
         </div>
-      </div>
       {selectedIds.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl px-4 py-3">
           <span className="text-xs text-indigo-200 font-semibold">{selectedIds.length} transaksi dipilih</span>
@@ -678,16 +673,16 @@ const getProviderName = (tx: any) =>
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                 <th className="py-3.5 pl-5 pr-2 w-8">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
-              </th>
-                <th className="py-3.5 px-5 text-center">INVOICE & WAKTU</th>
-                <th className="py-3.5 px-4 text-center">NOMINAL & GAME</th>
-                <th className="py-3.5 px-4 text-center">Tujuan</th>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
+                </th>
+                <th className="py-3.5 px-4 text-center min-w-[170px]">INVOICE & WAKTU</th>
+                <th className="py-3.5 px-4 text-center min-w-[220px]">NOMINAL & GAME</th>
+                <th className="py-3.5 px-4 text-center min-w-[200px]">TUJUAN</th>
                 <th className="py-3.5 px-4 text-center">HARGA</th>
-                <th className="py-3.5 px-4 min-w-[120px] text-center">SPEED</th>
+                <th className="py-3.5 px-3 text-center w-[80px]">SPEED</th>
                 <th className="py-3.5 px-4 text-center">STATUS</th>
-                <th className="py-3.5 px-4 text-center">RESPONSE</th>
-                <th className="py-3.5 px-5 text-center">AKSI</th>
+                <th className="py-3.5 px-4 text-center min-w-[150px]">ORDER ID</th>
+                <th className="py-3.5 px-4 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -714,15 +709,13 @@ const getProviderName = (tx: any) =>
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 min-w-[220px]">
                       <div>
                         <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
-                        <span className="font-semibold text-white block">
-                          {tx.game?.name || "-"}
-                        </span>
+                        <span className="font-semibold text-white block">{tx.game?.name || "-"}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono">
+                    <td className="py-3.5 px-4 font-mono min-w-[200px]">
                       <span className="text-slate-200 block">
                         {tx.customer_id}
                         {tx.server_id ? ` (${tx.server_id})` : ""}
@@ -731,40 +724,37 @@ const getProviderName = (tx: any) =>
                         {tx.user?.name || tx.user?.username || tx.user?.email || "Guest"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-100">
+                    <td className="py-3.5 px-4 text-center font-semibold text-slate-100 whitespace-nowrap">
                       {formatRupiah(tx.total_amount)}
                     </td>
-                    <td className="py-3.5 px-4 min-w-[120px] font-semibold text-slate-100 whitespace-nowrap">
+                    <td className="py-3.5 px-3 text-center w-[80px] font-semibold text-slate-100 whitespace-nowrap">
                       {calculateSpeed(tx)}
-                    </td>
-                    
+                    </td>  
                     <td className="py-3.5 px-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${providerStatusClass(tx.provider_status)}`}
-                        title={`Status transaksi: ${tx.status || "-"}`}
+                        title={tx.provider_status || "Belum ada status provider"}
                       >
-                        {(tx.provider_status || "BELUM ADA").toUpperCase()}
+                        {providerStatusLabel(tx.provider_status).toUpperCase()}
                       </span>
                     </td>
 
 
-                    {/* Response Provider Column */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col items-start gap-1.5">
+                    {/* Order ID + Provider */}
+                    <td className="py-3.5 px-4 min-w-[150px]">
+                      <div className="space-y-1">
                         <button
+                          type="button"
                           onClick={() => setResponseModal({ isOpen: true, tx, copied: false })}
-                          className="inline-flex items-center gap-1.5 max-w-[200px] px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 border border-indigo-500/25 text-[11px] font-mono font-medium transition-all group"
+                          className="font-mono font-bold text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 group max-w-[200px] text-left"
                           title="Klik untuk melihat Request & Response Provider"
                         >
-                          <Code2 className="w-3.5 h-3.5 shrink-0 text-indigo-400 group-hover:scale-110 transition-transform" />
                           <span className="truncate">
                             {tx.provider_order_id && tx.provider_order_id !== "-" ? tx.provider_order_id : "Lihat Response"}
                           </span>
+                          <Code2 className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </button>
-                        <span className="inline-flex items-center gap-1 pl-0.5 text-[10px] text-slate-400">
-                          <Server className="w-3 h-3 text-slate-500" />
-                          {getProviderName(tx)}
-                        </span>
+                        <span className="text-[10px] text-slate-500 block">{getProviderName(tx)}</span>
                       </div>
                     </td>
 
@@ -778,7 +768,7 @@ const getProviderName = (tx: any) =>
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         {/* Tombol 1: Cek Status Provider (Hanya Get Status, Tidak Memotong Saldo) */}
-                      {canCheckStatus(tx.status) && (
+                      {canCheckStatus(tx) && (
                         <button
                           onClick={() => handleCheckStatus(tx)}
                           disabled={checkingStatusTxId === tx.id}
@@ -980,7 +970,7 @@ const getProviderName = (tx: any) =>
                 Request dan respons terakhir disimpan otomatis tanpa credential provider.
               </p>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {canCheckStatus(responseModal.tx.status) && (
+                {canCheckStatus(responseModal.tx) &&(
                 <button
                   onClick={() => handleCheckStatus(responseModal.tx)}
                   disabled={checkingStatusTxId === responseModal.tx.id}
@@ -1131,7 +1121,7 @@ const getProviderName = (tx: any) =>
             <div className="pt-3 border-t border-slate-800 space-y-2.5">
             {/* Baris 1: aksi baca / cek */}
             <div className="flex flex-wrap gap-2">
-              {canCheckStatus(selectedTx.status) && (
+              {canCheckStatus(selectedTx) && (
               <button
                 onClick={() => handleCheckStatus(selectedTx)}
                 disabled={checkingStatusTxId === selectedTx.id}
