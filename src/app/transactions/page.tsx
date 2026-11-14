@@ -733,7 +733,7 @@ const providerStatusClass = (status?: string) => {
                     <td className="py-3.5 px-3 text-center w-[80px] font-semibold text-slate-100 whitespace-nowrap">
                       {calculateSpeed(tx)}
                     </td>  
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 text-center">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${providerStatusClass(tx.provider_status)}`}
                         title={tx.provider_status || "Belum ada status provider"}
@@ -744,7 +744,7 @@ const providerStatusClass = (status?: string) => {
 
 
                     {/* Order ID + Provider */}
-                    <td className="py-3.5 px-4 min-w-[150px]">
+                    <td className="py-3.5 px-4 min-w-[150px] text-center">
                       <div className="space-y-1">
                         <button
                           type="button"
