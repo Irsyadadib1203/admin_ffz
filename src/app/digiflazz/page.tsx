@@ -23,7 +23,6 @@ export default function DigiflazzCenterPage() {
   const [activeTab, setActiveTab] = useState<"buyer" | "seller">("buyer");
   const [syncGameId, setSyncGameId] = useState<number>(1);
   const [brandFilter, setBrandFilter] = useState("");
-  const [marginPercent, setMarginPercent] = useState<number>(8);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
@@ -58,7 +57,6 @@ export default function DigiflazzCenterPage() {
       const res = await api.post("/admin/digiflazz/sync", {
         game_id: syncGameId,
         brand_filter: brandFilter,
-        margin_percent: marginPercent,
       });
       setSyncResult(
         `Sukses! Berhasil mensinkronkan ${res.data.data.synced_count} produk dari Digiflazz.`
@@ -177,7 +175,7 @@ export default function DigiflazzCenterPage() {
                 Sinkronisasi Produk Otomatis (Price List Sync)
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Tarik daftar produk terbaru dari Digiflazz dan sesuaikan markup keuntungan secara otomatis.
+                Tarik daftar produk terbaru dari Digiflazz beserta harga modal dan statusnya.
               </p>
             </div>
 
@@ -229,17 +227,6 @@ export default function DigiflazzCenterPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-300 font-medium mb-1.5">
-                  Markup Margin (%)
-                </label>
-                <input
-                  type="number"
-                  value={marginPercent}
-                  onChange={(e) => setMarginPercent(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
-                />
-              </div>
             </div>
 
             <div className="pt-2">
@@ -344,11 +331,10 @@ export default function DigiflazzCenterPage() {
         message={
           <>
             Sistem akan mengambil katalog produk dari Digiflazz untuk target game{" "}
-            <strong className="text-white font-semibold">{selectedGameName}</strong> dengan margin markup{" "}
-            <strong className="text-emerald-400 font-bold">{marginPercent}%</strong>.
+            <strong className="text-white font-semibold">{selectedGameName}</strong>.
             <br />
             <span className="text-slate-400 text-[11px] mt-1 block">
-              Harga dasar dan harga jual multi-tier akan diperbarui secara otomatis.
+              Harga modal dan status produk akan diperbarui secara otomatis.
             </span>
           </>
         }

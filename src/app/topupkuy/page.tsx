@@ -83,7 +83,7 @@ export default function TopupKuyPage() {
       const newItems = items.filter((item) => !existingCodes.has(item.product_code));
       await Promise.all(newItems.map((item) => api.post("/admin/nominals", {
         game_id: Number(gameId), provider_id: provider.id, name: item.name, base_price: item.base_price,
-        margin_percent: 8, provider_product_code: item.product_code, seller_product_code: item.product_code,
+        provider_product_code: item.product_code, seller_product_code: item.product_code,
         is_active: item.is_active,
       })));
       setSelectedCodes([]);

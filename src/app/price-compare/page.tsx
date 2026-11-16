@@ -80,9 +80,9 @@ export default function PriceComparePage() {
       {/* Header & filter */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Perbandingan Harga Provider</h1>
+          <h1 className="text-xl font-bold text-white">Perbandingan Harga Modal Provider</h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Bandingkan harga modal tiap provider per nominal untuk memilih seller termurah
+            Bandingkan harga modal tiap provider per nominal untuk memilih provider aktif.
           </p>
         </div>
 
