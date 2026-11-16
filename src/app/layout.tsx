@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="id" className="dark" data-theme="dark">
       <body className="bg-slate-950 text-slate-100 min-h-screen flex antialiased">
         <AdminShell>{children}</AdminShell>
       </body>

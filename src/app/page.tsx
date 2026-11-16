@@ -60,15 +60,21 @@ const totalProviderBalance = idrProviders.reduce(
   const productsLoading = activeLoading || inactiveLoading;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
+  const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const categoryFilterRef = useRef(categoryFilter);
+  const statusFilterRef = useRef(statusFilter);
   useEffect(() => {
     categoryFilterRef.current = categoryFilter;
   }, [categoryFilter]);
+  useEffect(() => {
+    statusFilterRef.current = statusFilter;
+  }, [statusFilter]);
 
   // Initial load via REST (fetches 20 latest transactions matching active game filter); SSE handles live updates thereafter
-  const swrKey = categoryFilter === "Semua"
-    ? "/admin/dashboard/recent-transactions?limit=20"
-    : `/admin/dashboard/recent-transactions?limit=20&game_name=${encodeURIComponent(categoryFilter)}`;
+  const liveQuery = new URLSearchParams({ limit: "20" });
+  if (categoryFilter !== "Semua") liveQuery.set("game_name", categoryFilter);
+  if (statusFilter !== "Semua") liveQuery.set("status", statusFilter);
+  const swrKey = `/admin/dashboard/recent-transactions?${liveQuery.toString()}`;
 
   const { data: initialTxs, mutate: refreshTxs } = useSWR(
     swrKey,
@@ -167,22 +173,24 @@ const totalProviderBalance = idrProviders.reduce(
           const evt = JSON.parse(e.data);
           if (evt.type === "tx_update" && evt.payload) {
             const currentFilter = categoryFilterRef.current;
+            const currentStatusFilter = statusFilterRef.current;
             const matchesFilter =
               currentFilter === "Semua" ||
               (evt.payload.game_name &&
                 evt.payload.game_name.toLowerCase() === currentFilter.toLowerCase());
+            const matchesStatus =
+              currentStatusFilter === "Semua" ||
+              evt.payload.status === currentStatusFilter;
 
-            if (matchesFilter) {
-              setLiveTxs((prev) => {
-                const base = prev ?? [];
-                // Newest tx at top, deduplicate by id, max 20
-                const updated = [
-                  evt.payload,
-                  ...base.filter((t: any) => t.id !== evt.payload.id),
-                ];
-                return updated.slice(0, 20);
-              });
-            }
+            setLiveTxs((prev) => {
+              const withoutUpdated = (prev ?? []).filter(
+                (tx: any) => tx.id !== evt.payload.id
+              );
+              // Jika status/game berubah dan tidak lagi cocok, hapus item lama
+              // dari daftar agar filter live selalu akurat.
+              if (!matchesFilter || !matchesStatus) return withoutUpdated;
+              return [evt.payload, ...withoutUpdated].slice(0, 20);
+            });
           }
         } catch {
           // ignore malformed events
@@ -380,6 +388,23 @@ const totalProviderBalance = idrProviders.reduce(
               </select>
             </div>
 
+            <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1.5">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                aria-label="Filter status transaksi"
+              >
+                <option value="Semua" className="bg-slate-900 text-white">Semua Status</option>
+                <option value="success" className="bg-slate-900 text-white">Sukses</option>
+                <option value="processing" className="bg-slate-900 text-white">Processing</option>
+                <option value="pending" className="bg-slate-900 text-white">Pending</option>
+                <option value="failed" className="bg-slate-900 text-white">Gagal</option>
+                <option value="refunded" className="bg-slate-900 text-white">Refunded</option>
+              </select>
+            </div>
+
             <Link
               href="/transactions"
               className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 whitespace-nowrap"
@@ -447,7 +472,9 @@ const totalProviderBalance = idrProviders.reduce(
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500">
-                    {categoryFilter !== "Semua" ? `Belum ada transaksi untuk game ${categoryFilter}.` : "Belum ada transaksi top-up terbaru."}
+                    {categoryFilter !== "Semua" || statusFilter !== "Semua"
+                      ? "Belum ada transaksi sesuai filter aktif."
+                      : "Belum ada transaksi top-up terbaru."}
                   </td>
                 </tr>
               )}

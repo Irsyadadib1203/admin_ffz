@@ -66,6 +66,7 @@ export default function TransactionsPage() {
   const [providerStatusFilter, setProviderStatusFilter] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
   const [gameFilter, setGameFilter] = useState("");
+  const [nominalFilter, setNominalFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -166,7 +167,7 @@ export default function TransactionsPage() {
   const [bulkResult, setBulkResult] = useState<any | null>(null);
   const [bulkProviderModal, setBulkProviderModal] = useState<{ isOpen: boolean; isLoading: boolean }>({ isOpen: false, isLoading: false });
 
-  useEffect(() => { setSelectedIds([]); }, [page, limit, providerFilter, gameFilter, providerStatusFilter, search, startDate, endDate]);
+  useEffect(() => { setSelectedIds([]); }, [page, limit, providerFilter, gameFilter, nominalFilter, providerStatusFilter, search, startDate, endDate]);
 
   
   const queryParams = new URLSearchParams({
@@ -180,6 +181,9 @@ export default function TransactionsPage() {
   }
   if (gameFilter) {
     queryParams.set("game_id", gameFilter);
+  }
+  if (nominalFilter) {
+    queryParams.set("nominal_id", nominalFilter);
   }
   if (providerStatusFilter) {
     queryParams.set("provider_status", providerStatusFilter);
@@ -316,6 +320,12 @@ const canCheckStatus = (tx?: any) => {
 
   // Daftar game untuk dropdown filter (diurutkan berdasarkan nama)
   const { data: games } = useSWR("/admin/games?limit=500", (u: string) =>
+    api.get(u).then((r) => {
+      const list = Array.isArray(r.data?.data) ? r.data.data : [];
+      return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    })
+  );
+  const { data: nominals } = useSWR("/admin/nominals?limit=500", (u: string) =>
     api.get(u).then((r) => {
       const list = Array.isArray(r.data?.data) ? r.data.data : [];
       return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
@@ -525,6 +535,18 @@ const providerStatusClass = (status?: string) => {
             </select>
 
             <select
+              value={nominalFilter}
+              onChange={(e) => { setNominalFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px]"
+              aria-label="Filter nominal produk"
+            >
+              <option value="">Semua Nominal</option>
+              {nominals?.map((nominal: any) => (
+                <option key={nominal.id} value={nominal.id}>{nominal.name}</option>
+              ))}
+            </select>
+
+            <select
               value={providerStatusFilter}
               onChange={(e) => { setProviderStatusFilter(e.target.value); setPage(1); }}
               className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
@@ -569,6 +591,7 @@ const providerStatusClass = (status?: string) => {
               onClick={() => {
                 setProviderFilter("");
                 setGameFilter("");
+                setNominalFilter("");
                 setProviderStatusFilter("");
                 setStartDate("");
                 setEndDate("");
@@ -672,17 +695,17 @@ const providerStatusClass = (status?: string) => {
       {/* Transactions Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-max min-w-full table-auto text-left text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                 <th className="py-3.5 pl-5 pr-2 w-8">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
                 </th>
-                <th className="py-3.5 px-4 text-center min-w-[170px]">INVOICE & WAKTU</th>
-                <th className="py-3.5 px-4 text-center min-w-[190px]">NOMINAL & GAME</th>
-                <th className="py-3.5 px-4 text-center min-w-[170px]">TUJUAN</th>
-                <th className="py-3.5 px-4 text-center min-w-[100px]">HARGA</th>
-                <th className="py-3.5 px-3 text-center w-[80px]">SPEED</th>
+                <th className="py-3.5 px-4 text-center">INVOICE & WAKTU</th>
+                <th className="py-3.5 px-4 text-center">NOMINAL & GAME</th>
+                <th className="py-3.5 px-4 text-center">TUJUAN</th>
+                <th className="py-3.5 px-4 text-center">HARGA</th>
+                <th className="py-3.5 px-3 text-center">SPEED</th>
                 <th className="py-3.5 px-4 text-center">STATUS</th>
                 <th className="py-3.5 px-4 text-center min-w-[150px]">ORDER ID</th>
                 <th className="py-3.5 px-4 text-center">AKSI</th>
@@ -695,7 +718,7 @@ const providerStatusClass = (status?: string) => {
                     <td className="py-3.5 pl-5 pr-2">
                       <input type="checkbox" checked={selectedIds.includes(tx.id)} onChange={() => toggleOne(tx.id)} disabled={tx.status !== "processing"} className="accent-indigo-500 disabled:opacity-30" />
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 max-w-[220px]">
                       <div className="space-y-1">
                         <a
                           href={`${PUBLIC_CLIENT_URL}/invoice/${tx.invoice_number}`}
@@ -704,7 +727,7 @@ const providerStatusClass = (status?: string) => {
                           className="font-mono font-bold text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 group"
                           title="Buka halaman invoice publik"
                         >
-                          <span>{tx.invoice_number}</span>
+                          <span className="truncate">{tx.invoice_number}</span>
                           <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </a>
                         <span className="text-[10px] text-slate-500 block">
@@ -712,14 +735,14 @@ const providerStatusClass = (status?: string) => {
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-center min-w-[190px]">
+                    <td className="py-3.5 px-4 text-center max-w-[220px]">
                       <div>
-                        <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
-                        <span className="font-semibold text-white block">{tx.game?.name || "-"}</span>
+                        <span className="text-slate-300 block truncate">{tx.nominal?.name || "-"}</span>
+                        <span className="font-semibold text-white block truncate">{tx.game?.name || "-"}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-center font-mono min-w-[170px]">
-                      <span className="text-slate-200 block">
+                    <td className="py-3.5 px-4 text-center font-mono max-w-[220px]">
+                      <span className="text-slate-200 block truncate">
                         {tx.customer_id}
                         {tx.server_id ? ` (${tx.server_id})` : ""}
                       </span>
@@ -727,10 +750,10 @@ const providerStatusClass = (status?: string) => {
                         {tx.user?.name || tx.user?.username || tx.user?.email || "Guest"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-center min-w-[100px] font-semibold text-slate-100 whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center font-semibold text-slate-100 whitespace-nowrap">
                       {formatRupiah(tx.total_amount)}
                     </td>
-                    <td className="py-3.5 px-3 text-center w-[80px] font-semibold text-slate-100 whitespace-nowrap">
+                    <td className="py-3.5 px-3 text-center font-semibold text-slate-100 whitespace-nowrap">
                       {calculateSpeed(tx)}
                     </td>  
                     <td className="py-3.5 px-4 text-center">
@@ -744,7 +767,7 @@ const providerStatusClass = (status?: string) => {
 
 
                     {/* Order ID + Provider */}
-                    <td className="py-3.5 px-4 min-w-[150px] text-center">
+                    <td className="py-3.5 px-4 text-center max-w-[220px]">
                       <div className="space-y-1">
                         <button
                           type="button"
