@@ -58,6 +58,47 @@ const prettyJSON = (value: any): string => {
   return typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2);
 };
 
+function InfoCard({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-4 space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+function RefRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4 py-3">
+      <span className="text-xs text-slate-500 shrink-0">{label}</span>
+      <span className="font-mono text-xs text-slate-200 break-all sm:text-right" title={value || ""}>
+        {value || "-"}
+      </span>
+    </div>
+  );
+}
+
+const txStatusBadge = (status?: string) => {
+  switch (status) {
+    case "success":
+      return { label: "Sukses", cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" };
+    case "failed":
+      return { label: "Gagal", cls: "bg-rose-500/10 text-rose-400 border-rose-500/20" };
+    case "refunded":
+      return { label: "Refund", cls: "bg-purple-500/10 text-purple-400 border-purple-500/20" };
+    case "processing":
+      return { label: "Diproses", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" };
+    default:
+      return { label: "Menunggu", cls: "bg-slate-800 text-slate-400 border-slate-700" };
+  }
+};
+
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -524,116 +565,121 @@ const providerStatusClass = (status?: string) => {
 
   return (
     <div className="space-y-6">
-      {/* Header & Controls */}
-        <div className="flex flex-col gap-3">
-          {/* Baris 1: filter */}
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={providerFilter}
-              onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="">Semua Provider</option>
-              {providers?.map((p: any) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {/* Header & Controls */}
+      <div className="flex flex-col gap-3">
+        {/* Baris 1: Filter Provider, Game, Nominal, Status Provider */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={providerFilter}
+            onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
+            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            aria-label="Filter provider"
+          >
+            <option value="">Semua Provider</option>
+            {providers?.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
 
-            <select
-              value={gameFilter}
-              onChange={(e) => { setGameFilter(e.target.value); setNominalFilter(""); setPage(1); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
-              aria-label="Filter game"
-            >
-              <option value="">Semua Game</option>
-              {games?.map((g: any) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+          <select
+            value={gameFilter}
+            onChange={(e) => { setGameFilter(e.target.value); setNominalFilter(""); setPage(1); }}
+            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
+            aria-label="Filter game"
+          >
+            <option value="">Semua Game</option>
+            {games?.map((g: any) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
 
-            <select
-              value={nominalFilter}
-              disabled={!gameFilter}
-              onChange={(e) => { setNominalFilter(e.target.value); setPage(1); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Filter nominal produk"
-            >
-              <option value="">{gameFilter ? "Semua Nominal" : "Pilih game terlebih dahulu"}</option>
-              {nominalOptions?.map((nominal: any) => (
-                <option key={nominal.id} value={nominal.id}>{nominal.name}</option>
-              ))}
-            </select>
+          <select
+            value={nominalFilter}
+            disabled={!gameFilter}
+            onChange={(e) => { setNominalFilter(e.target.value); setPage(1); }}
+            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Filter nominal produk"
+          >
+            <option value="">{gameFilter ? "Semua Nominal" : "Pilih game terlebih dahulu"}</option>
+            {nominalOptions?.map((nominal: any) => (
+              <option key={nominal.id} value={nominal.id}>{nominal.name}</option>
+            ))}
+          </select>
 
-            <select
-              value={providerStatusFilter}
-              onChange={(e) => { setProviderStatusFilter(e.target.value); setPage(1); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="">Semua Status Provider</option>
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Sukses">Sukses</option>
-              <option value="Gagal">Gagal</option>
-            </select>
+          <select
+            value={providerStatusFilter}
+            onChange={(e) => { setProviderStatusFilter(e.target.value); setPage(1); }}
+            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            aria-label="Filter status provider"
+          >
+            <option value="">Semua Status Provider</option>
+            <option value="Pending">Pending</option>
+            <option value="Processing">Processing</option>
+            <option value="Sukses">Sukses</option>
+            <option value="Gagal">Gagal</option>
+          </select>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="text-xs text-slate-400">Dari</label>
-              <input
-                type="date"
-                value={startDate}
-                max={endDate || undefined}
-                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
-                aria-label="Tanggal mulai"
-              />
-              <label className="text-xs text-slate-400">Sampai</label>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate || undefined}
-                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
-                aria-label="Tanggal akhir"
-              />
-            </div>
-
-            <button
-              onClick={() => mutate()}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
-              title="Refresh Data"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => {
-                setProviderFilter("");
-                setGameFilter("");
-                setNominalFilter("");
-                setProviderStatusFilter("");
-                setStartDate("");
-                setEndDate("");
-                setSearch("");
-                setPage(1);
-              }}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
-            >
-              Reset Filter
-            </button>
-          </div>
-
-          {/* Baris 2: search (selalu di baris sendiri) */}
-          <div className="relative w-full max-w-sm">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+        {/* Baris 2: Filter Tanggal, Refresh, Reset Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-slate-400">Dari</label>
             <input
-              type="text"
-              placeholder="Cari invoice / user ID..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
+              aria-label="Tanggal mulai"
+            />
+            <label className="text-xs text-slate-400">Sampai</label>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
+              aria-label="Tanggal akhir"
             />
           </div>
+
+          <button
+            onClick={() => mutate()}
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
+            title="Refresh Data"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => {
+              setProviderFilter("");
+              setGameFilter("");
+              setNominalFilter("");
+              setProviderStatusFilter("");
+              setStartDate("");
+              setEndDate("");
+              setSearch("");
+              setPage(1);
+            }}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
+          >
+            Reset Filter
+          </button>
         </div>
+
+        {/* Baris 3: Search */}
+        <div className="relative w-full max-w-sm">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Cari invoice / user ID..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+          />
+        </div>
+      </div>
       {selectedIds.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl px-4 py-3">
           <span className="text-xs text-indigo-200 font-semibold">{selectedIds.length} transaksi dipilih</span>
@@ -1057,183 +1103,218 @@ const providerStatusClass = (status?: string) => {
         createPortal(
           <div
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
-          onClick={() => setSelectedTx(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Detail transaksi"
-            className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl p-4 sm:p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto my-auto"
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedTx(null)}
           >
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">Transactions Center</p>
-                <h3 className="mt-1 text-lg font-bold text-white">Detail Transaksi</h3>
-                <a
-                  href={`${PUBLIC_CLIENT_URL}/invoice/${selectedTx.invoice_number}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-indigo-400 font-bold hover:text-indigo-300 inline-flex items-center gap-1 transition-colors"
-                  title="Buka invoice publik"
-                >
-                  {selectedTx.invoice_number}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTx(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
-                title="Tutup"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="text-slate-400 block font-medium">Game & Produk</span>
-                <span className="font-semibold text-white block text-sm">
-                  {selectedTx.game?.name}
-                </span>
-                <span className="text-slate-300">{selectedTx.nominal?.name}</span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="text-slate-400 block font-medium">Tujuan Akun Pelanggan</span>
-                <span className="font-semibold text-emerald-400 block text-sm">
-                  {selectedTx.customer_id}
-                  {selectedTx.server_id ? ` (${selectedTx.server_id})` : ""}
-                </span>
-                <span className="text-slate-400">
-                  Nickname: {selectedTx.nickname || "-"}
-                </span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                <span className="text-slate-400 block font-medium">Harga & Keuntungan</span>
-                <div className="grid grid-cols-3 gap-2 text-[11px]"><div><span className="block text-slate-500">Modal</span><span className="font-semibold text-slate-200">{formatRupiah(selectedTx.base_price)}</span></div><div><span className="block text-slate-500">Jual</span><span className="font-bold text-white">{formatRupiah(selectedTx.selling_price)}</span></div><div><span className="block text-slate-500">Laba</span><span className="font-bold text-emerald-400">+{formatRupiah(selectedTx.profit)}</span></div></div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 block font-medium">Status Provider</span>
-                  <span className="text-[11px] text-indigo-300 font-mono font-bold flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
-                    <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    {calculateSpeed(selectedTx)}
-                  </span>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Detail transaksi"
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-800">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">
+                    Transactions Center
+                  </p>
+                  <h3 className="text-lg font-bold text-white">Detail Transaksi</h3>
+                  <a
+                    href={`${PUBLIC_CLIENT_URL}/invoice/${selectedTx.invoice_number}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono text-indigo-400 font-bold hover:text-indigo-300 inline-flex items-center gap-1 transition-colors"
+                    title="Buka invoice publik"
+                  >
+                    {selectedTx.invoice_number}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
-                <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[10px] font-bold ${providerStatusClass(selectedTx.provider_status)}`}>{providerStatusLabel(selectedTx.provider_status).toUpperCase()}</span>
-                {(selectedTx.sn || selectedTx.payment_reference) && (
-                  <div className="mt-1 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                    <span className="text-[10px] text-emerald-400 block font-bold mb-0.5">Serial Number (SN):</span>
-                    <span className="font-mono text-xs text-emerald-300 break-all block">
-                      {selectedTx.sn || selectedTx.payment_reference}
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${txStatusBadge(selectedTx.status).cls}`}
+                  >
+                    {txStatusBadge(selectedTx.status).label.toUpperCase()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTx(null)}
+                    className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                    title="Tutup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-6 space-y-7">
+                {/* Bagian 1: Ringkasan */}
+                <section className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-300">Ringkasan Pesanan</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <InfoCard label="Game & Produk">
+                      <p className="text-sm font-semibold text-white">{selectedTx.game?.name || "-"}</p>
+                      <p className="text-xs text-slate-400">{selectedTx.nominal?.name || "-"}</p>
+                    </InfoCard>
+
+                    <InfoCard label="Tujuan Akun">
+                      <p className="text-sm font-semibold font-mono text-emerald-400 break-all">
+                        {selectedTx.customer_id}
+                        {selectedTx.server_id ? ` (${selectedTx.server_id})` : ""}
+                      </p>
+                      <p className="text-xs text-slate-400">Nickname: {selectedTx.nickname || "-"}</p>
+                    </InfoCard>
+
+                    <InfoCard label="Modal">
+                      <p className="text-sm font-semibold text-white">{formatRupiah(selectedTx.base_price)}</p>
+                      <p className="text-xs text-slate-400">
+                        Bayar: {selectedTx.payment_method || "-"}
+                      </p>
+                    </InfoCard>
+                  </div>
+                </section>
+
+                {/* Bagian 2: Status Provider */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-slate-300">Status Provider</h4>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold ${providerStatusClass(selectedTx.provider_status)}`}
+                      title={selectedTx.provider_status || ""}
+                    >
+                      {providerStatusLabel(selectedTx.provider_status).toUpperCase()}
                     </span>
                   </div>
-                )}
-                <span className="text-slate-500 block break-words">
-                  Pesan: {selectedTx.provider_message || "-"}
-                </span>
-                <span className="text-slate-400 block">
-                  Provider Latency:{" "}
-                  <span className="font-mono font-semibold text-sky-300">
-                    {calculateLatency(selectedTx)}
-                  </span>
-                </span>
-                <span
-                  className="text-slate-500 block break-all font-mono"
-                  title={selectedTx.provider_ref_id}
-                >
-                  Provider Ref: {selectedTx.provider_ref_id || "-"}
-                </span>
-                <span
-                  className="text-slate-500 block break-all font-mono"
-                  title={selectedTx.provider_order_id}
-                >
-                  Provider Order ID: {selectedTx.provider_order_id || "-"}
-                </span>
-              </div>
-            </div>
 
-            <div className="pt-4 border-t border-slate-800 space-y-2.5">
-            {/* Baris 1: aksi baca / cek */}
-            <div className="flex flex-wrap gap-2">
-              {canCheckStatus(selectedTx) && (
-              <button
-                onClick={() => handleCheckStatus(selectedTx)}
-                disabled={checkingStatusTxId === selectedTx.id}
-                className="whitespace-nowrap px-3.5 py-1.5 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 border border-sky-500/30"
-                title="Hanya mengambil status terbaru dari provider tanpa memotong saldo"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${checkingStatusTxId === selectedTx.id ? "animate-spin" : ""}`} />
-                Cek Status Provider
-              </button>
-            )}
+                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Speed</p>
+                        <p className="flex items-center gap-1.5 font-mono text-sm font-semibold text-indigo-300">
+                          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                          {calculateSpeed(selectedTx)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                          Provider Latency
+                        </p>
+                        <p className="font-mono text-sm font-semibold text-sky-300">
+                          {calculateLatency(selectedTx)}
+                        </p>
+                      </div>
+                    </div>
 
-              <button
-                onClick={() => {
-                  const tx = selectedTx;
-                  setSelectedTx(null);
-                  setResponseModal({ isOpen: true, tx, copied: false });
-                }}
-                className="whitespace-nowrap px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center gap-1.5"
-              >
-                <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-                Lihat Response JSON
-              </button>
-
-              {canRegenerateRef(selectedTx.status) && (
-                <button
-                  onClick={() => handleRegenRefPrompt(selectedTx)}
-                  className="whitespace-nowrap px-3.5 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30"
-                >
-                  <Hash className="w-3.5 h-3.5" />
-                  Regenerate Ref
-                </button>
-              )}
-            </div>
-            {/* Baris 2: aksi yang mengubah transaksi + tutup */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-2">
-                {!["success", "refunded"].includes(selectedTx.status) && (
-                  <>
-                    {canRetryTransaction(selectedTx.status) && (
-                      <button
-                        onClick={() => handleRetryPrompt(selectedTx)}
-                        className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
-                      >
-                        Proses Ulang Order
-                      </button>
+                    {(selectedTx.sn || selectedTx.payment_reference) && (
+                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
+                          Serial Number (SN)
+                        </p>
+                        <p className="font-mono text-xs text-emerald-300 break-all">
+                          {selectedTx.sn || selectedTx.payment_reference}
+                        </p>
+                      </div>
                     )}
-                    <button
-                      onClick={() => handleSuccessPrompt(selectedTx)}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
-                    >
-                      Set Sukses Manual
-                    </button>
-                    <button
-                      onClick={() => handleRefundPrompt(selectedTx)}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
-                    >
-                      Refund Saldo
-                    </button>
-                  </>
-                )}
+
+                    <div className="space-y-1 border-t border-slate-800 pt-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pesan</p>
+                      <p className="text-xs leading-relaxed text-slate-300 break-words">
+                        {selectedTx.provider_message || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Bagian 3: Referensi */}
+                <section className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-300">Referensi Provider</h4>
+                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-4 divide-y divide-slate-800">
+                    <RefRow label="Provider" value={getProviderName(selectedTx)} />
+                    <RefRow label="Provider Ref" value={selectedTx.provider_ref_id} />
+                    <RefRow label="Provider Order ID" value={selectedTx.provider_order_id} />
+                  </div>
+                </section>
               </div>
-              <button
-                onClick={() => setSelectedTx(null)}
-                className="whitespace-nowrap px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-              >
-                Tutup
-              </button>
+
+              {/* Bagian 4: Aksi */}
+              <div className="px-6 py-5 border-t border-slate-800 bg-slate-950/40 rounded-b-3xl space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {canCheckStatus(selectedTx) && (
+                    <button
+                      onClick={() => handleCheckStatus(selectedTx)}
+                      disabled={checkingStatusTxId === selectedTx.id}
+                      className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 border border-sky-500/30"
+                      title="Hanya mengambil status terbaru dari provider tanpa memotong saldo"
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 text-sky-400 ${checkingStatusTxId === selectedTx.id ? "animate-spin" : ""}`}
+                      />
+                      Cek Status Provider
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      const tx = selectedTx;
+                      setSelectedTx(null);
+                      setResponseModal({ isOpen: true, tx, copied: false });
+                    }}
+                    className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <Code2 className="w-3.5 h-3.5 text-indigo-400" />
+                    Lihat Response JSON
+                  </button>
+
+                  {canRegenerateRef(selectedTx.status) && (
+                    <button
+                      onClick={() => handleRegenRefPrompt(selectedTx)}
+                      className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30"
+                    >
+                      <Hash className="w-3.5 h-3.5" />
+                      Regenerate Ref
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
+                  <div className="flex flex-wrap gap-2">
+                    {!["success", "refunded"].includes(selectedTx.status) && (
+                      <>
+                        {canRetryTransaction(selectedTx.status) && (
+                          <button
+                            onClick={() => handleRetryPrompt(selectedTx)}
+                            className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                          >
+                            Proses Ulang Order
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleSuccessPrompt(selectedTx)}
+                          className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                        >
+                          Set Sukses Manual
+                        </button>
+                        <button
+                          onClick={() => handleRefundPrompt(selectedTx)}
+                          className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
+                        >
+                          Refund Saldo
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setSelectedTx(null)}
+                    className="whitespace-nowrap px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {bulkModal.isOpen && bulkModal.action &&
         createPortal(
