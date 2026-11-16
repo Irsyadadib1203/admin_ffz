@@ -42,6 +42,9 @@ const formatRupiah = (value?: number) =>
 export default function TopupKuyPage() {
   const [search, setSearch] = useState("");
   const [copiedCode, setCopiedCode] = useState("");
+  const [gameId, setGameId] = useState("");
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const [isCreatingNominals, setIsCreatingNominals] = useState(false);
   const {
     data: status,
     mutate: refreshStatus,
@@ -53,14 +56,43 @@ export default function TopupKuyPage() {
     mutate: refreshProducts,
     isLoading: productsLoading,
   } = useSWR<CatalogItem[]>("/admin/topupkuy/products", fetcher);
+  const { data: games } = useSWR<any[]>("/admin/games?limit=500", fetcher);
+  const { data: providers } = useSWR<any[]>("/admin/providers", fetcher);
+  const selectedGame = games?.find((game: any) => String(game.id) === gameId);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return products || [];
+    const gameQuery = selectedGame?.name?.toLowerCase().trim();
     return (products || []).filter((product) =>
-      `${product.name} ${product.product_code}`.toLowerCase().includes(query)
+      (!query || `${product.name} ${product.product_code}`.toLowerCase().includes(query)) &&
+      (!gameQuery || product.name.toLowerCase().includes(gameQuery))
     );
-  }, [products, search]);
+  }, [products, search, selectedGame]);
+
+  const toggleProduct = (code: string) => setSelectedCodes((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
+  const toggleAllProducts = () => setSelectedCodes((current) => current.length === filteredProducts.length ? [] : filteredProducts.map((item) => item.product_code));
+  const createNominals = async () => {
+    if (!gameId || selectedCodes.length === 0) return;
+    const provider = providers?.find((item: any) => String(item.code).toUpperCase() === "TOPUPKUY");
+    if (!provider) return alert("Provider TopupKuy belum tersedia. Atur dahulu pada Providers Center.");
+    setIsCreatingNominals(true);
+    try {
+      const items = (products || []).filter((item) => selectedCodes.includes(item.product_code));
+      const existingResponse = await api.get(`/admin/nominals?limit=1000&game_id=${gameId}&provider_id=${provider.id}`);
+      const existingCodes = new Set((existingResponse.data?.data || []).map((item: any) => item.provider_product_code));
+      const newItems = items.filter((item) => !existingCodes.has(item.product_code));
+      await Promise.all(newItems.map((item) => api.post("/admin/nominals", {
+        game_id: Number(gameId), provider_id: provider.id, name: item.name, base_price: item.base_price,
+        margin_percent: 8, provider_product_code: item.product_code, seller_product_code: item.product_code,
+        is_active: item.is_active,
+      })));
+      setSelectedCodes([]);
+      const skipped = items.length - newItems.length;
+      alert(`${newItems.length} nominal TopupKuy berhasil dibuat.${skipped ? ` ${skipped} SKU yang sudah ada dilewati.` : ""}`);
+    } catch (error: any) {
+      alert("Sebagian nominal mungkin belum dibuat: " + (error.response?.data?.message || error.message));
+    } finally { setIsCreatingNominals(false); }
+  };
 
   const copyCode = async (code: string) => {
     try {
@@ -119,7 +151,7 @@ export default function TopupKuyPage() {
 
       <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-4 text-xs">
         <p className="font-semibold text-slate-100">SKU TopupKuy langsung memakai Product Code.</p>
-        <p className="mt-1 text-slate-300">Salin kode produk dari katalog, lalu tempelkan ke kolom SKU Provider pada <Link href="/nominals" className="text-indigo-400 underline hover:text-indigo-300">Nominals &amp; Prices</Link>.</p>
+        <p className="mt-1 text-slate-300">Pilih game lokal untuk menyaring produk berdasarkan nama game, lalu pilih beberapa produk untuk membuat nominal sekaligus dengan SKU dan harga modal TopupKuy.</p>
       </div>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
@@ -129,7 +161,10 @@ export default function TopupKuyPage() {
             <h2 className="text-sm font-bold text-white">Katalog Produk</h2>
             <span className="rounded-md bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-400">{filteredProducts.length} produk</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <select value={gameId} onChange={(event) => { setGameId(event.target.value); setSelectedCodes([]); }} className="max-w-[190px] rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500">
+              <option value="">Filter game lokal</option>{games?.map((game: any) => <option key={game.id} value={game.id}>{game.name}</option>)}
+            </select>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama produk / SKU..." className="w-full rounded-xl border border-slate-800 bg-slate-950 py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-indigo-500" />
@@ -140,6 +175,8 @@ export default function TopupKuyPage() {
           </div>
         </div>
 
+        {selectedCodes.length > 0 && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3"><span className="text-xs font-semibold text-indigo-200">{selectedCodes.length} produk dipilih{selectedGame ? ` untuk ${selectedGame.name}` : ""}</span><button onClick={createNominals} disabled={!gameId || isCreatingNominals} className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">{isCreatingNominals ? "Membuat nominal..." : "Buat Nominal Terpilih"}</button></div>}
+
         {productsError ? (
           <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-5 text-center text-xs text-rose-300">Gagal memuat katalog. Pastikan API Key dan URL TopupKuy sudah benar.</div>
         ) : productsLoading ? (
@@ -149,10 +186,11 @@ export default function TopupKuyPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-max min-w-full table-auto text-left text-xs">
-              <thead><tr className="border-b border-slate-800 text-slate-400"><th className="px-3 py-3">Produk</th><th className="px-3 py-3">Harga Modal</th><th className="px-3 py-3">SKU / Product Code</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Aksi</th></tr></thead>
+              <thead><tr className="border-b border-slate-800 text-slate-400"><th className="px-3 py-3"><input type="checkbox" checked={filteredProducts.length > 0 && selectedCodes.length === filteredProducts.length} onChange={toggleAllProducts} /></th><th className="px-3 py-3">Produk</th><th className="px-3 py-3">Harga Modal</th><th className="px-3 py-3">SKU / Product Code</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Aksi</th></tr></thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filteredProducts.map((product) => (
                   <tr key={product.product_code} className="transition-colors hover:bg-slate-800/30">
+                    <td className="px-3 py-3"><input type="checkbox" checked={selectedCodes.includes(product.product_code)} onChange={() => toggleProduct(product.product_code)} /></td>
                     <td className="max-w-[340px] px-3 py-3 font-medium text-slate-100"><span className="block truncate">{product.name || "-"}</span></td>
                     <td className="whitespace-nowrap px-3 py-3 font-mono text-slate-200">{formatRupiah(product.base_price)}</td>
                     <td className="px-3 py-3"><span className="inline-flex max-w-[280px] items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 font-mono font-bold text-indigo-300"><Tag className="h-3 w-3 shrink-0 text-indigo-400" /><span className="truncate">{product.product_code}</span></span></td>

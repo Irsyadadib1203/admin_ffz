@@ -115,6 +115,10 @@ export default function NominalsPage() {
   const [switchScope, setSwitchScope] = useState<"game" | "selected">("game");
   const [switchGameId, setSwitchGameId] = useState<number>(1);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [isBulkSkuOpen, setIsBulkSkuOpen] = useState(false);
+  const [bulkSkuProviderId, setBulkSkuProviderId] = useState<number>(0);
+  const [bulkSkuEdits, setBulkSkuEdits] = useState<Record<number, { product_code: string; cost_price: string }>>({});
+  const [isSavingBulkSku, setIsSavingBulkSku] = useState(false);
 
   // Switch Provider Result Modal state
   const [switchResult, setSwitchResult] = useState<{
@@ -558,6 +562,46 @@ const saveProviderProducts = async () => {
     );
   };
 
+  const selectedNominals = nominals.filter((item: any) => selectedIds.includes(item.id));
+  const prepareBulkSku = (providerId: number) => {
+    setBulkSkuProviderId(providerId);
+    const edits: Record<number, { product_code: string; cost_price: string }> = {};
+    selectedNominals.forEach((item: any) => {
+      const pp = item.provider_products?.find((product: any) => product.provider_id === providerId);
+      edits[item.id] = {
+        product_code: pp?.product_code || (item.provider_id === providerId ? item.provider_product_code || "" : ""),
+        cost_price: pp?.cost_price != null ? String(pp.cost_price) : "",
+      };
+    });
+    setBulkSkuEdits(edits);
+  };
+  const openBulkSku = () => {
+    const providerId = providers?.[0]?.id || 0;
+    prepareBulkSku(providerId);
+    setIsBulkSkuOpen(true);
+  };
+  const saveBulkSku = async () => {
+    if (!bulkSkuProviderId || selectedNominals.length === 0) return;
+    setIsSavingBulkSku(true);
+    try {
+      await Promise.all(selectedNominals.map((item: any) => {
+        const edit = bulkSkuEdits[item.id] || { product_code: "", cost_price: "" };
+        return api.put(`/admin/nominals/${item.id}/provider-products`, [{
+          provider_id: bulkSkuProviderId,
+          product_code: edit.product_code.trim(),
+          cost_price: edit.cost_price === "" ? null : Number(edit.cost_price),
+        }]);
+      }));
+      setIsBulkSkuOpen(false);
+      setSelectedIds([]);
+      mutate();
+    } catch (err: any) {
+      alert("Sebagian SKU mungkin belum tersimpan: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSavingBulkSku(false);
+    }
+  };
+
   // Badge warna berputar berdasarkan hash ID provider agar setiap provider punya warna unik
   const PROVIDER_BADGE_COLORS = [
     "bg-sky-500/10 border-sky-500/30 text-sky-400",
@@ -602,6 +646,13 @@ const saveProviderProducts = async () => {
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>Pindah Provider {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}</span>
+          </button>
+          <button
+            onClick={openBulkSku}
+            disabled={selectedIds.length === 0}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Edit2 className="w-3.5 h-3.5" /> Edit Bulk SKU ({selectedIds.length})
           </button>
 
           {/* Create Nominal Button */}
@@ -1259,6 +1310,19 @@ const saveProviderProducts = async () => {
         )}
 
       {/* Modal Pindah / Switch Provider */}
+      {isBulkSkuOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => !isSavingBulkSku && setIsBulkSkuOpen(false)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between border-b border-slate-800 pb-4"><div><h3 className="text-base font-bold text-white">Edit Bulk SKU & Harga Modal</h3><p className="mt-1 text-xs text-slate-400">Pilih provider, lalu sesuaikan SKU dan harga dari {selectedNominals.length} nominal yang dipilih.</p></div><button onClick={() => setIsBulkSkuOpen(false)} className="text-slate-400 hover:text-white">×</button></div>
+            <label className="mb-3 block text-xs font-medium text-slate-300">Provider</label>
+            <select value={bulkSkuProviderId} onChange={(event) => prepareBulkSku(Number(event.target.value))} className="mb-4 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500">
+              {providers?.map((provider: any) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
+            </select>
+            <div className="max-h-[50vh] overflow-auto rounded-xl border border-slate-800"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-950 text-slate-400"><tr><th className="p-3">Nominal</th><th className="p-3">SKU Provider</th><th className="p-3">Harga Modal</th></tr></thead><tbody className="divide-y divide-slate-800">{selectedNominals.map((item: any) => { const edit = bulkSkuEdits[item.id] || { product_code: "", cost_price: "" }; return <tr key={item.id}><td className="p-3"><span className="block font-semibold text-slate-200">{item.name}</span><span className="text-[10px] text-slate-500">{item.game?.name}</span></td><td className="p-3"><input value={edit.product_code} onChange={(event) => setBulkSkuEdits((prev) => ({ ...prev, [item.id]: { ...edit, product_code: event.target.value } }))} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 font-mono text-xs text-slate-200" placeholder="SKU" /></td><td className="p-3"><input type="number" min="0" value={edit.cost_price} onChange={(event) => setBulkSkuEdits((prev) => ({ ...prev, [item.id]: { ...edit, cost_price: event.target.value } }))} className="w-32 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-slate-200" placeholder="Harga" /></td></tr>; })}</tbody></table></div>
+            <div className="mt-4 flex justify-end gap-2"><button disabled={isSavingBulkSku} onClick={() => setIsBulkSkuOpen(false)} className="rounded-xl bg-slate-800 px-4 py-2 text-xs text-slate-300">Batal</button><button disabled={isSavingBulkSku || !bulkSkuProviderId} onClick={saveBulkSku} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSavingBulkSku ? "Menyimpan..." : "Simpan Semua"}</button></div>
+          </div>
+        </div>, document.body
+      )}
       {isSwitchModalOpen &&
         createPortal(
           <div

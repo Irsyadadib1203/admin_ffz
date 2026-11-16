@@ -166,6 +166,7 @@ export default function TransactionsPage() {
   const [bulkModal, setBulkModal] = useState<{ isOpen: boolean; action: "retry" | "success" | "fail" | null; notes: string; isLoading: boolean }>({ isOpen: false, action: null, notes: "", isLoading: false });
   const [bulkResult, setBulkResult] = useState<any | null>(null);
   const [bulkProviderModal, setBulkProviderModal] = useState<{ isOpen: boolean; isLoading: boolean }>({ isOpen: false, isLoading: false });
+  const [bulkRefModal, setBulkRefModal] = useState({ isOpen: false, isLoading: false });
 
   useEffect(() => { setSelectedIds([]); }, [page, limit, providerFilter, gameFilter, nominalFilter, providerStatusFilter, search, startDate, endDate]);
 
@@ -257,6 +258,20 @@ export default function TransactionsPage() {
     }
   };
 
+  const executeBulkRegenerateRef = async () => {
+    setBulkRefModal((p) => ({ ...p, isLoading: true }));
+    try {
+      const res = await api.post("/admin/transactions/bulk-regenerate-ref", { ids: selectedIds });
+      setBulkResult(res.data?.data);
+      setBulkRefModal({ isOpen: false, isLoading: false });
+      setSelectedIds([]);
+      mutate();
+    } catch (err: any) {
+      alert("Gagal membuat ulang ProviderRefID: " + (err.response?.data?.message || err.message));
+      setBulkRefModal((p) => ({ ...p, isLoading: false }));
+    }
+  };
+
   // Retry hanya untuk transaksi yang belum mencapai hasil final. Ini mencegah
   // order provider yang sudah gagal/refund diproses ulang tanpa keputusan baru.
   const canRetryTransaction = (status?: string) =>
@@ -325,7 +340,9 @@ const canCheckStatus = (tx?: any) => {
       return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
     })
   );
-  const { data: nominals } = useSWR("/admin/nominals?limit=500", (u: string) =>
+  const { data: nominalOptions } = useSWR(
+    gameFilter ? `/admin/nominals?limit=500&game_id=${gameFilter}` : null,
+    (u: string) =>
     api.get(u).then((r) => {
       const list = Array.isArray(r.data?.data) ? r.data.data : [];
       return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
@@ -524,7 +541,7 @@ const providerStatusClass = (status?: string) => {
 
             <select
               value={gameFilter}
-              onChange={(e) => { setGameFilter(e.target.value); setPage(1); }}
+              onChange={(e) => { setGameFilter(e.target.value); setNominalFilter(""); setPage(1); }}
               className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
               aria-label="Filter game"
             >
@@ -536,12 +553,13 @@ const providerStatusClass = (status?: string) => {
 
             <select
               value={nominalFilter}
+              disabled={!gameFilter}
               onChange={(e) => { setNominalFilter(e.target.value); setPage(1); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px]"
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Filter nominal produk"
             >
-              <option value="">Semua Nominal</option>
-              {nominals?.map((nominal: any) => (
+              <option value="">{gameFilter ? "Semua Nominal" : "Pilih game terlebih dahulu"}</option>
+              {nominalOptions?.map((nominal: any) => (
                 <option key={nominal.id} value={nominal.id}>{nominal.name}</option>
               ))}
             </select>
@@ -624,6 +642,7 @@ const providerStatusClass = (status?: string) => {
             <button onClick={() => openBulk("success")} className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" />Set Sukses</button>
             <button onClick={() => openBulk("fail")} className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" />Set Gagal</button>
             <button onClick={() => setBulkProviderModal({ isOpen: true, isLoading: false })} disabled={!canBulkRetryProvider} className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed" title={canBulkRetryProvider ? "Alihkan transaksi ke provider yang aktif pada nominal masing-masing" : "Hanya bisa digunakan jika semua transaksi terpilih berstatus processing, provider_status pending, dan belum punya providerOrderID"}><Shuffle className="w-3.5 h-3.5" />Rehit Provider</button>
+            <button onClick={() => setBulkRefModal({ isOpen: true, isLoading: false })} className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" />Regenerate RefID</button>
             <button onClick={() => setSelectedIds([])} className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs">Batal Pilih</button>
           </div>
         </div>
@@ -1316,6 +1335,17 @@ const providerStatusClass = (status?: string) => {
         </div>,
         document.body
       )}
+
+      <ConfirmModal
+        isOpen={bulkRefModal.isOpen}
+        isLoading={bulkRefModal.isLoading}
+        variant="warning"
+        title={`Regenerate RefID (${selectedIds.length} transaksi)`}
+        message="ProviderRefID hanya akan diganti pada transaksi yang belum memiliki order resmi di provider. Transaksi yang tidak memenuhi syarat akan dilewati dan ditampilkan pada hasil."
+        confirmText="Regenerate RefID"
+        onClose={() => setBulkRefModal({ isOpen: false, isLoading: false })}
+        onConfirm={executeBulkRegenerateRef}
+      />
 
       {bulkResult &&
         createPortal(

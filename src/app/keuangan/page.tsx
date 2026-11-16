@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import useSWR from "swr";
 import Link from "next/link";
 import {
@@ -87,6 +88,7 @@ export default function KeuanganPage() {
   const [checkingProviderId, setCheckingProviderId] = useState<number | null>(null);
   const [notice, setNotice] = useState<string>("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [selectedProviderReport, setSelectedProviderReport] = useState<ProviderBreakdown | null>(null);
 
 
   const { data, mutate, isValidating } = useSWR<FinanceSummary>(
@@ -161,6 +163,22 @@ const spentByUser = (userId: number) => {
 
 const alexUsage = spentByUser(ALEX_USER_ID);
 const josjisUsage = spentByUser(JOSJIS_USER_ID);
+
+  const providerCategoryReport = useMemo(() => {
+    if (!selectedProviderReport) return [];
+    const rate = rateFor(selectedProviderReport.balance_unit);
+    const grouped = new Map<string, { name: string; total: number; count: number }>();
+    (data?.transactions || [])
+      .filter((tx) => tx.status === "success" && tx.provider_id === selectedProviderReport.provider_id)
+      .forEach((tx) => {
+        const name = tx.game?.name || `Game #${tx.game_id}`;
+        const current = grouped.get(name) || { name, total: 0, count: 0 };
+        current.total += Math.round((tx.base_price || 0) * rate);
+        current.count += 1;
+        grouped.set(name, current);
+      });
+    return Array.from(grouped.values()).sort((a, b) => b.total - a.total);
+  }, [data?.transactions, selectedProviderReport, currencies]);
 
   const formatRupiah = (val?: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -548,8 +566,13 @@ const josjisUsage = spentByUser(JOSJIS_USER_ID);
 
             return (
               <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedProviderReport(provider)}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedProviderReport(provider); }}
                 key={provider.provider_id}
-                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 space-y-4 flex flex-col justify-between hover:border-slate-700 transition"
+                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 space-y-4 flex flex-col justify-between text-left hover:border-indigo-500/50 hover:bg-slate-900 transition"
+                title="Lihat rincian penggunaan saldo per game"
               >
                 <div className="space-y-4">
                   {/* Provider Header */}
@@ -606,7 +629,7 @@ const josjisUsage = spentByUser(JOSJIS_USER_ID);
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleRefreshProvider(provider.provider_id)}
+                        onClick={(event) => { event.stopPropagation(); handleRefreshProvider(provider.provider_id); }}
                         disabled={isChecking}
                         className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition disabled:opacity-50"
                         title="Perbarui Saldo Provider Ini"
@@ -671,6 +694,22 @@ const josjisUsage = spentByUser(JOSJIS_USER_ID);
           })}
         </div>
       </section>
+
+      {selectedProviderReport && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setSelectedProviderReport(null)}>
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between border-b border-slate-800 pb-4">
+              <div><h3 className="text-base font-bold text-white">Rincian {selectedProviderReport.provider_name}</h3><p className="mt-1 text-xs text-slate-400">Penggunaan saldo per game pada {selectedDate}</p></div>
+              <button onClick={() => setSelectedProviderReport(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white">×</button>
+            </div>
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto">
+              {providerCategoryReport.length ? providerCategoryReport.map((item) => (
+                <div key={item.name} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-xs"><div><p className="font-semibold text-slate-200">{item.name}</p><p className="mt-0.5 text-slate-500">{item.count} transaksi sukses</p></div><span className="font-mono font-bold text-emerald-400">{formatRupiah(item.total)}</span></div>
+              )) : <p className="py-10 text-center text-xs text-slate-500">Belum ada transaksi sukses untuk provider ini.</p>}
+            </div>
+          </div>
+        </div>, document.body
+      )}
     </div>
   );
 }
