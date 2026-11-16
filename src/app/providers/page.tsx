@@ -184,6 +184,7 @@ export default function ProvidersPage() {
   const [isActive, setIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [referenceSaveResult, setReferenceSaveResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // FFZStore State
   const [ffz, setFFZ] = useState<FFZSettings | null>(null);
@@ -309,6 +310,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
   const saveReference = async () => {
     setSaving(true);
     setNotice("");
+    setReferenceSaveResult(null);
     try {
       const res = await api.put("/admin/settings/transaction-reference", reference);
       // Merge response with existing tokens so the token chip list is never undefined
@@ -317,9 +319,13 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
         { ...saved, tokens: saved.tokens ?? reference.tokens ?? [] },
         false
       );
+      setReference((current) => ({ ...current, invoice_template: saved.invoice_template, ref_id_template: saved.ref_id_template, tokens: saved.tokens ?? current.tokens }));
       setNotice("Format invoice dan ref ID global tersimpan.");
+      setReferenceSaveResult({ success: true, message: "Format invoice dan Ref ID global berhasil disimpan." });
     } catch (error: any) {
-      setNotice(error.response?.data?.message || "Gagal menyimpan format global.");
+      const message = error.response?.data?.message || "Gagal menyimpan format global.";
+      setNotice(message);
+      setReferenceSaveResult({ success: false, message });
     } finally {
       setSaving(false);
     }
@@ -829,6 +835,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-slate-500"><code className="font-mono text-indigo-400">{"{seller_sku}"}</code> akan diganti dengan SKU Seller/H2H pada nominal transaksi.</p>
         <button
           onClick={saveReference}
           disabled={saving}
@@ -838,6 +845,20 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
           Simpan Format Global
         </button>
       </section>
+
+      {referenceSaveResult && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm" onClick={() => setReferenceSaveResult(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${referenceSaveResult.success ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-rose-500/30 bg-rose-500/10 text-rose-400"}`}>
+                {referenceSaveResult.success ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+              </div>
+              <div><h3 className="text-base font-bold text-white">{referenceSaveResult.success ? "Format tersimpan" : "Format belum tersimpan"}</h3><p className="mt-1 text-xs leading-relaxed text-slate-400">{referenceSaveResult.message}</p></div>
+            </div>
+            <div className="mt-5 flex justify-end"><button onClick={() => setReferenceSaveResult(null)} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">Tutup</button></div>
+          </div>
+        </div>, document.body
+      )}
 
       {/* Realtime Saldo Control Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg">
