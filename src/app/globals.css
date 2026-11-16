@@ -42,21 +42,48 @@ html[data-theme="light"] main {
   color: #172033;
 }
 
-html[data-theme="light"] :is(main, header) [class*="bg-slate-950"] { background-color: #f8fafc !important; }
-html[data-theme="light"] :is(main, header) [class*="bg-slate-900"] { background-color: #ffffff !important; }
-html[data-theme="light"] :is(main, header) [class*="bg-slate-800"] { background-color: #eef2f7 !important; }
-html[data-theme="light"] :is(main, header) [class*="bg-slate-700"] { background-color: #dce4ef !important; }
-html[data-theme="light"] :is(main, header) [class*="border-slate-800"],
-html[data-theme="light"] :is(main, header) [class*="border-slate-700"] { border-color: #dbe3ef !important; }
-html[data-theme="light"] :is(main, header) [class*="divide-slate-800"] > :not([hidden]) ~ :not([hidden]) { border-color: #e5ebf3 !important; }
-html[data-theme="light"] :is(main, header) [class*="text-slate-100"],
-html[data-theme="light"] :is(main, header) [class*="text-slate-200"],
-html[data-theme="light"] :is(main, header) [class*="text-slate-300"] { color: #263247 !important; }
-html[data-theme="light"] :is(main, header) [class*="text-slate-400"] { color: #64748b !important; }
-html[data-theme="light"] :is(main, header) [class*="text-slate-500"],
-html[data-theme="light"] :is(main, header) [class*="placeholder-slate-500"] { color: #7a889c !important; }
-html[data-theme="light"] :is(main, header) :is(h1, h2, h3, h4).text-white { color: #172033 !important; }
-html[data-theme="light"] :is(main, header) p.text-white { color: #172033 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="bg-slate-950"] { background-color: #f8fafc !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="bg-slate-900"] { background-color: #ffffff !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="bg-slate-800"] { background-color: #edf2f8 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="bg-slate-700"] { background-color: #dce6f1 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="bg-indigo-950"] { background-color: #eef2ff !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="border-slate-800"],
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="border-slate-700"] { border-color: #d9e2ee !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="divide-slate-800"] > :not([hidden]) ~ :not([hidden]) { border-color: #e5ebf3 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="text-slate-100"],
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="text-slate-200"],
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="text-slate-300"] { color: #263247 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="text-slate-400"] { color: #5d6d83 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="text-slate-500"],
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) [class*="placeholder-slate-500"] { color: #718096 !important; }
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) :is(h1, h2, h3, h4).text-white,
+html[data-theme="light"] :is(main, header, aside, [role="dialog"]) p.text-white { color: #172033 !important; }
+html[data-theme="light"] aside { background: #ffffff !important; border-color: #d9e2ee !important; box-shadow: 12px 0 30px rgba(15, 23, 42, .04); }
+html[data-theme="light"] aside [class*="bg-indigo-600"] { background-color: #4f46e5 !important; }
+html[data-theme="light"] aside [class*="text-white"] { color: #fff !important; }
+html[data-theme="light"] aside [class*="hover:text-white"]:hover { color: #172033 !important; }
+html[data-theme="light"] aside [class*="hover:bg-slate-800"]:hover { background-color: #eef2f7 !important; }
+/* Portal modal tidak berada di dalam <main>; aturan ini menjaga warna modal,
+   dialog konfirmasi, dan dropdown tetap terang serta kontras. */
+html[data-theme="light"] [class*="bg-slate-950"] { background-color: #f8fafc !important; }
+html[data-theme="light"] [class*="bg-slate-900"] { background-color: #ffffff !important; }
+html[data-theme="light"] [class*="bg-slate-800"] { background-color: #edf2f8 !important; }
+html[data-theme="light"] [class*="border-slate-800"],
+html[data-theme="light"] [class*="border-slate-700"] { border-color: #d9e2ee !important; }
+html[data-theme="light"] [class*="text-slate-100"],
+html[data-theme="light"] [class*="text-slate-200"],
+html[data-theme="light"] [class*="text-slate-300"] { color: #263247 !important; }
+html[data-theme="light"] [class*="text-slate-400"] { color: #5d6d83 !important; }
+html[data-theme="light"] [class*="text-slate-500"] { color: #718096 !important; }
+html[data-theme="light"] [class*="text-white"] { color: #172033 !important; }
+html[data-theme="light"] [class*="hover:text-white"]:hover { color: #172033 !important; }
+html[data-theme="light"] aside [class*="bg-indigo-600"] [class*="text-white"],
+html[data-theme="light"] aside a[class*="bg-indigo-600"] { color: #ffffff !important; }
+html[data-theme="light"] :is(button, a)[class*="bg-indigo-600"],
+html[data-theme="light"] :is(button, a)[class*="bg-emerald-600"],
+html[data-theme="light"] :is(button, a)[class*="bg-rose-600"],
+html[data-theme="light"] :is(button, a)[class*="bg-violet-600"],
+html[data-theme="light"] :is(button, a)[class*="bg-amber-600"] { color: #ffffff !important; }
 html[data-theme="light"] header { background-color: rgba(255, 255, 255, 0.88) !important; }
 html[data-theme="light"] input[type="date"] { color-scheme: light !important; }
 html[data-theme="light"] ::-webkit-scrollbar-track { background: #e9eef5; }

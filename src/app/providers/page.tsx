@@ -829,6 +829,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-slate-500"><code className="font-mono text-indigo-400">{"{seller_sku}"}</code> akan diganti dengan SKU Seller/H2H pada nominal transaksi.</p>
         <button
           onClick={saveReference}
           disabled={saving}

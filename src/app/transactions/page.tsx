@@ -1060,12 +1060,16 @@ const providerStatusClass = (status?: string) => {
           onClick={() => setSelectedTx(null)}
         >
           <div
-            className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Detail transaksi"
+            className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl p-4 sm:p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
-                <h3 className="text-base font-bold text-white">Detail Transaksi</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">Transactions Center</p>
+                <h3 className="mt-1 text-lg font-bold text-white">Detail Transaksi</h3>
                 <a
                   href={`${PUBLIC_CLIENT_URL}/invoice/${selectedTx.invoice_number}`}
                   target="_blank"
@@ -1087,17 +1091,17 @@ const providerStatusClass = (status?: string) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-slate-400 block">Game & Produk:</span>
+            <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <span className="text-slate-400 block font-medium">Game & Produk</span>
                 <span className="font-semibold text-white block text-sm">
                   {selectedTx.game?.name}
                 </span>
                 <span className="text-slate-300">{selectedTx.nominal?.name}</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-slate-400 block">Tujuan Akun Pelanggan:</span>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <span className="text-slate-400 block font-medium">Tujuan Akun Pelanggan</span>
                 <span className="font-semibold text-emerald-400 block text-sm">
                   {selectedTx.customer_id}
                   {selectedTx.server_id ? ` (${selectedTx.server_id})` : ""}
@@ -1107,30 +1111,20 @@ const providerStatusClass = (status?: string) => {
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-slate-400 block">Harga & Keuntungan:</span>
-                <span className="text-slate-200 block">
-                  Modal: {formatRupiah(selectedTx.base_price)}
-                </span>
-                <span className="text-white font-bold block">
-                  Jual: {formatRupiah(selectedTx.selling_price)}
-                </span>
-                <span className="text-emerald-400 font-bold">
-                  Laba: +{formatRupiah(selectedTx.profit)}
-                </span>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                <span className="text-slate-400 block font-medium">Harga & Keuntungan</span>
+                <div className="grid grid-cols-3 gap-2 text-[11px]"><div><span className="block text-slate-500">Modal</span><span className="font-semibold text-slate-200">{formatRupiah(selectedTx.base_price)}</span></div><div><span className="block text-slate-500">Jual</span><span className="font-bold text-white">{formatRupiah(selectedTx.selling_price)}</span></div><div><span className="block text-slate-500">Laba</span><span className="font-bold text-emerald-400">+{formatRupiah(selectedTx.profit)}</span></div></div>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 block">Status Provider:</span>
+                  <span className="text-slate-400 block font-medium">Status Provider</span>
                   <span className="text-[11px] text-indigo-300 font-mono font-bold flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                     <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
                     {calculateSpeed(selectedTx)}
                   </span>
                 </div>
-                <span className="font-semibold text-amber-300 block">
-                  {selectedTx.provider_status || "Pending"}
-                </span>
+                <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[10px] font-bold ${providerStatusClass(selectedTx.provider_status)}`}>{providerStatusLabel(selectedTx.provider_status).toUpperCase()}</span>
                 {(selectedTx.sn || selectedTx.payment_reference) && (
                   <div className="mt-1 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
                     <span className="text-[10px] text-emerald-400 block font-bold mb-0.5">Serial Number (SN):</span>
@@ -1139,7 +1133,7 @@ const providerStatusClass = (status?: string) => {
                     </span>
                   </div>
                 )}
-                <span className="text-slate-500 block truncate">
+                <span className="text-slate-500 block break-words">
                   Pesan: {selectedTx.provider_message || "-"}
                 </span>
                 <span className="text-slate-400 block">
@@ -1149,13 +1143,13 @@ const providerStatusClass = (status?: string) => {
                   </span>
                 </span>
                 <span
-                  className="text-slate-500 block truncate font-mono"
+                  className="text-slate-500 block break-all font-mono"
                   title={selectedTx.provider_ref_id}
                 >
                   Provider Ref: {selectedTx.provider_ref_id || "-"}
                 </span>
                 <span
-                  className="text-slate-500 block truncate font-mono"
+                  className="text-slate-500 block break-all font-mono"
                   title={selectedTx.provider_order_id}
                 >
                   Provider Order ID: {selectedTx.provider_order_id || "-"}
@@ -1163,7 +1157,7 @@ const providerStatusClass = (status?: string) => {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800 space-y-2.5">
+            <div className="pt-4 border-t border-slate-800 space-y-2.5">
             {/* Baris 1: aksi baca / cek */}
             <div className="flex flex-wrap gap-2">
               {canCheckStatus(selectedTx) && (
