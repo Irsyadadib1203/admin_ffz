@@ -4,15 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import useSWR from "swr";
 import {
   DollarSign,
-  TrendingUp,
   Receipt,
   CheckCircle2,
   Clock,
   XCircle,
-  Zap,
+  Wallet,
+  Package,
   RefreshCw,
-  ShieldCheck,
-  ArrowUpRight,
   Radio,
   Filter,
 } from "lucide-react";
@@ -27,17 +25,56 @@ export default function DashboardPage() {
     fetcher,
     { refreshInterval: 15000 }
   );
+  // Saldo provider (dibaca dari DB, tidak menembak provider)
+const { data: providerList } = useSWR<any[]>("/admin/providers", fetcher, {
+  refreshInterval: 15000,
+});
+
+// Saldo Shell (Kiosgamer) tidak sebanding dengan Rupiah, jadi tidak dijumlahkan
+const idrProviders = (providerList ?? []).filter(
+  (p) => String(p.balance_unit || "IDR").toUpperCase() !== "SHELL"
+);
+const totalProviderBalance = idrProviders.reduce(
+  (sum, p) => sum + (Number(p.balance) || 0),
+  0
+);
+
+  // Jumlah produk (nominal) aktif & nonaktif: limit=1, ambil total dari meta paginasi
+  const countFetcher = (url: string) =>
+    api.get(url).then((r) => {
+      const d = r.data;
+      return Number(
+        d?.meta?.total ?? d?.pagination?.total ?? d?.total ?? d?.data?.total ?? 0
+      );
+    });
+  const { data: activeProducts, isLoading: activeLoading } = useSWR(
+    "/admin/nominals?limit=1&is_active=true",
+    countFetcher,
+    { refreshInterval: 60000 }
+  );
+  const { data: inactiveProducts, isLoading: inactiveLoading } = useSWR(
+    "/admin/nominals?limit=1&is_active=false",
+    countFetcher,
+    { refreshInterval: 60000 }
+  );
+  const productsLoading = activeLoading || inactiveLoading;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
+  const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const categoryFilterRef = useRef(categoryFilter);
+  const statusFilterRef = useRef(statusFilter);
   useEffect(() => {
     categoryFilterRef.current = categoryFilter;
   }, [categoryFilter]);
+  useEffect(() => {
+    statusFilterRef.current = statusFilter;
+  }, [statusFilter]);
 
   // Initial load via REST (fetches 20 latest transactions matching active game filter); SSE handles live updates thereafter
-  const swrKey = categoryFilter === "Semua"
-    ? "/admin/dashboard/recent-transactions?limit=20"
-    : `/admin/dashboard/recent-transactions?limit=20&game_name=${encodeURIComponent(categoryFilter)}`;
+  const liveQuery = new URLSearchParams({ limit: "20" });
+  if (categoryFilter !== "Semua") liveQuery.set("game_name", categoryFilter);
+  if (statusFilter !== "Semua") liveQuery.set("status", statusFilter);
+  const swrKey = `/admin/dashboard/recent-transactions?${liveQuery.toString()}`;
 
   const { data: initialTxs, mutate: refreshTxs } = useSWR(
     swrKey,
@@ -136,22 +173,24 @@ export default function DashboardPage() {
           const evt = JSON.parse(e.data);
           if (evt.type === "tx_update" && evt.payload) {
             const currentFilter = categoryFilterRef.current;
+            const currentStatusFilter = statusFilterRef.current;
             const matchesFilter =
               currentFilter === "Semua" ||
               (evt.payload.game_name &&
                 evt.payload.game_name.toLowerCase() === currentFilter.toLowerCase());
+            const matchesStatus =
+              currentStatusFilter === "Semua" ||
+              evt.payload.status === currentStatusFilter;
 
-            if (matchesFilter) {
-              setLiveTxs((prev) => {
-                const base = prev ?? [];
-                // Newest tx at top, deduplicate by id, max 20
-                const updated = [
-                  evt.payload,
-                  ...base.filter((t: any) => t.id !== evt.payload.id),
-                ];
-                return updated.slice(0, 20);
-              });
-            }
+            setLiveTxs((prev) => {
+              const withoutUpdated = (prev ?? []).filter(
+                (tx: any) => tx.id !== evt.payload.id
+              );
+              // Jika status/game berubah dan tidak lagi cocok, hapus item lama
+              // dari daftar agar filter live selalu akurat.
+              if (!matchesFilter || !matchesStatus) return withoutUpdated;
+              return [evt.payload, ...withoutUpdated].slice(0, 20);
+            });
           }
         } catch {
           // ignore malformed events
@@ -226,7 +265,7 @@ export default function DashboardPage() {
 
       {/* Main Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Revenue */}
+        {/* 1. Total Revenue */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Total Pendapatan</span>
@@ -244,25 +283,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Total Profit */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Laba Bersih (Margin)</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-bold text-white">
-              {statsLoading ? "Memuat..." : formatRupiah(stats?.total_profit)}
-            </h3>
-            <p className="text-[11px] text-indigo-400 mt-1 flex items-center gap-1 font-medium">
-              <span>Laba Hari ini: {formatRupiah(stats?.today_profit)}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Total Orders */}
+        {/* 2. Total Orders */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Total Transaksi</span>
@@ -284,21 +305,47 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Digiflazz Balance */}
+        {/* 3. Akumulasi Saldo Provider */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Saldo Digiflazz Provider</span>
+            <span className="text-xs font-medium text-slate-400">Akumulasi Saldo Provider</span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Zap className="w-4 h-4" />
+              <Wallet className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-xl font-bold text-amber-300">
-              {statsLoading ? "Memuat..." : formatRupiah(stats?.digiflazz_balance)}
+              {!providerList ? "Memuat..." : formatRupiah(totalProviderBalance)}
             </h3>
             <p className="text-[11px] text-slate-400 mt-1">
-              Digunakan untuk fulfillment otomatis
+              Gabungan {idrProviders.length} provider (Rupiah)
             </p>
+          </div>
+        </div>
+
+        {/* 4. Total Produk Aktif & Nonaktif */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">Total Produk</span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+              <Package className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <h3 className="text-xl font-bold text-white">
+              {productsLoading
+                ? "Memuat..."
+                : ((activeProducts ?? 0) + (inactiveProducts ?? 0)).toLocaleString("id-ID")}
+            </h3>
+            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+              <span className="text-emerald-400 font-medium">
+                {(activeProducts ?? 0).toLocaleString("id-ID")} Aktif
+              </span>
+              <span>•</span>
+              <span className="text-rose-400 font-medium">
+                {(inactiveProducts ?? 0).toLocaleString("id-ID")} Nonaktif
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -338,6 +385,23 @@ export default function DashboardPage() {
                     {g.name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1.5">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                aria-label="Filter status transaksi"
+              >
+                <option value="Semua" className="bg-slate-900 text-white">Semua Status</option>
+                <option value="success" className="bg-slate-900 text-white">Sukses</option>
+                <option value="processing" className="bg-slate-900 text-white">Processing</option>
+                <option value="pending" className="bg-slate-900 text-white">Pending</option>
+                <option value="failed" className="bg-slate-900 text-white">Gagal</option>
+                <option value="refunded" className="bg-slate-900 text-white">Refunded</option>
               </select>
             </div>
 
@@ -408,7 +472,9 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500">
-                    {categoryFilter !== "Semua" ? `Belum ada transaksi untuk game ${categoryFilter}.` : "Belum ada transaksi top-up terbaru."}
+                    {categoryFilter !== "Semua" || statusFilter !== "Semua"
+                      ? "Belum ada transaksi sesuai filter aktif."
+                      : "Belum ada transaksi top-up terbaru."}
                   </td>
                 </tr>
               )}

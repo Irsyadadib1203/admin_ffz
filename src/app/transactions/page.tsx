@@ -66,6 +66,7 @@ export default function TransactionsPage() {
   const [providerStatusFilter, setProviderStatusFilter] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
   const [gameFilter, setGameFilter] = useState("");
+  const [nominalFilter, setNominalFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -165,8 +166,9 @@ export default function TransactionsPage() {
   const [bulkModal, setBulkModal] = useState<{ isOpen: boolean; action: "retry" | "success" | "fail" | null; notes: string; isLoading: boolean }>({ isOpen: false, action: null, notes: "", isLoading: false });
   const [bulkResult, setBulkResult] = useState<any | null>(null);
   const [bulkProviderModal, setBulkProviderModal] = useState<{ isOpen: boolean; isLoading: boolean }>({ isOpen: false, isLoading: false });
+  const [bulkRefModal, setBulkRefModal] = useState({ isOpen: false, isLoading: false });
 
-  useEffect(() => { setSelectedIds([]); }, [page, limit, providerFilter, gameFilter, providerStatusFilter, search, startDate, endDate]);
+  useEffect(() => { setSelectedIds([]); }, [page, limit, providerFilter, gameFilter, nominalFilter, providerStatusFilter, search, startDate, endDate]);
 
   
   const queryParams = new URLSearchParams({
@@ -180,6 +182,9 @@ export default function TransactionsPage() {
   }
   if (gameFilter) {
     queryParams.set("game_id", gameFilter);
+  }
+  if (nominalFilter) {
+    queryParams.set("nominal_id", nominalFilter);
   }
   if (providerStatusFilter) {
     queryParams.set("provider_status", providerStatusFilter);
@@ -253,14 +258,35 @@ export default function TransactionsPage() {
     }
   };
 
+  const executeBulkRegenerateRef = async () => {
+    setBulkRefModal((p) => ({ ...p, isLoading: true }));
+    try {
+      const res = await api.post("/admin/transactions/bulk-regenerate-ref", { ids: selectedIds });
+      setBulkResult(res.data?.data);
+      setBulkRefModal({ isOpen: false, isLoading: false });
+      setSelectedIds([]);
+      mutate();
+    } catch (err: any) {
+      alert("Gagal membuat ulang ProviderRefID: " + (err.response?.data?.message || err.message));
+      setBulkRefModal((p) => ({ ...p, isLoading: false }));
+    }
+  };
+
   // Retry hanya untuk transaksi yang belum mencapai hasil final. Ini mencegah
   // order provider yang sudah gagal/refund diproses ulang tanpa keputusan baru.
   const canRetryTransaction = (status?: string) =>
     status === "pending" || status === "processing";
 
   // Cek status ke provider hanya relevan selama transaksi belum final
-  const canCheckStatus = (status?: string) =>
-    status === "pending" || status === "processing";
+  // Tombol hanya muncul jika transaksi belum final DAN status provider bukan Processing
+// Tombol muncul hanya jika transaksi belum final, status provider sudah ada, dan bukan Processing
+const canCheckStatus = (tx?: any) => {
+  if (!tx) return false;
+  if (tx.status !== "pending" && tx.status !== "processing") return false;
+  const ps = (tx.provider_status || "").trim();
+  if (!ps) return false;
+  return !/processing/i.test(ps);
+};
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -314,12 +340,39 @@ export default function TransactionsPage() {
       return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
     })
   );
+  const { data: nominalOptions } = useSWR(
+    gameFilter ? `/admin/nominals?limit=500&game_id=${gameFilter}` : null,
+    (u: string) =>
+    api.get(u).then((r) => {
+      const list = Array.isArray(r.data?.data) ? r.data.data : [];
+      return [...list].sort((a: any, b: any) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    })
+  );
 
 const getProviderName = (tx: any) =>
   tx?.provider?.name ||
   providers?.find((p: any) => p.id === tx?.provider_id)?.name ||
   tx?.nominal?.provider?.name ||
   "-";
+  const providerStatusBase = (status?: string) => (status || "").split("(")[0].trim();
+
+const providerStatusLabel = (status?: string) => {
+  const s = providerStatusBase(status);
+  if (!s) return "Belum Ada";
+  if (/sukses|success/i.test(s)) return "Sukses";
+  if (/gagal|failed|error/i.test(s)) return "Gagal";
+  if (/processing/i.test(s)) return "Processing";
+  if (/pending/i.test(s)) return "Pending";
+  return s;
+};
+
+const providerStatusClass = (status?: string) => {
+  const label = providerStatusLabel(status);
+  if (label === "Sukses") return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  if (label === "Gagal") return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+  if (label === "Processing" || label === "Pending") return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+  return "bg-slate-800 text-slate-400 border border-slate-700";
+};
 
   const providerExchange = (tx: any) => {
     const fallbackRequest = {
@@ -472,128 +525,115 @@ const getProviderName = (tx: any) =>
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white">Pusat Transaksi Top-Up</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Monitoring dan eksekusi transaksi pelanggan, H2H, serta respon realtime provider
-          </p>
-        </div>
+        <div className="flex flex-col gap-3">
+          {/* Baris 1: filter */}
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={providerFilter}
+              onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Semua Provider</option>
+              {providers?.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
 
-        
-        <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={providerFilter}
-          onChange={(e) => {
-            setProviderFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-        >
-          <option value="">Semua Provider</option>
-          {providers?.map((p: any) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-          <select
-            value={gameFilter}
-            onChange={(e) => {
-              setGameFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
-            aria-label="Filter game"
-          >
-            <option value="">Semua Game</option>
-            {games?.map((g: any) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={providerStatusFilter}
-            onChange={(e) => {
-              setProviderStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="">Semua Status Provider</option>
-            <option value="Pending">Pending</option>
-            <option value="Processing">Processing</option>
-            <option value="Sukses">Sukses</option>
-            <option value="Gagal">Gagal</option>
-          </select>
+            <select
+              value={gameFilter}
+              onChange={(e) => { setGameFilter(e.target.value); setNominalFilter(""); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[180px]"
+              aria-label="Filter game"
+            >
+              <option value="">Semua Game</option>
+              {games?.map((g: any) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-slate-400">Dari</label>
-            <input
-              type="date"
-              value={startDate}
-              max={endDate || undefined}
-              onChange={(e) => {
-                setStartDate(e.target.value);
+            <select
+              value={nominalFilter}
+              disabled={!gameFilter}
+              onChange={(e) => { setNominalFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-[200px] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Filter nominal produk"
+            >
+              <option value="">{gameFilter ? "Semua Nominal" : "Pilih game terlebih dahulu"}</option>
+              {nominalOptions?.map((nominal: any) => (
+                <option key={nominal.id} value={nominal.id}>{nominal.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={providerStatusFilter}
+              onChange={(e) => { setProviderStatusFilter(e.target.value); setPage(1); }}
+              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Semua Status Provider</option>
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Sukses">Sukses</option>
+              <option value="Gagal">Gagal</option>
+            </select>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-400">Dari</label>
+              <input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
+                aria-label="Tanggal mulai"
+              />
+              <label className="text-xs text-slate-400">Sampai</label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert"
+                aria-label="Tanggal akhir"
+              />
+            </div>
+
+            <button
+              onClick={() => mutate()}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
+              title="Refresh Data"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => {
+                setProviderFilter("");
+                setGameFilter("");
+                setNominalFilter("");
+                setProviderStatusFilter("");
+                setStartDate("");
+                setEndDate("");
+                setSearch("");
                 setPage(1);
               }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              aria-label="Tanggal mulai"
-            />
-
-            <label className="text-xs text-slate-400">Sampai</label>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate || undefined}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPage(1);
-              }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              aria-label="Tanggal akhir"
-            />
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
+            >
+              Reset Filter
+            </button>
           </div>
 
-          <div className="relative">
+          {/* Baris 2: search (selalu di baris sendiri) */}
+          <div className="relative w-full max-w-sm">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder="Cari invoice / user ID..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-52"
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
-
-          <button
-            onClick={() => mutate()}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300"
-            title="Refresh Data"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => {
-              setProviderFilter("");
-              setGameFilter("");
-              setProviderStatusFilter("");
-              setStartDate("");
-              setEndDate("");
-              setSearch("");
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
-          >
-            Reset Filter
-          </button>
         </div>
-      </div>
       {selectedIds.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl px-4 py-3">
           <span className="text-xs text-indigo-200 font-semibold">{selectedIds.length} transaksi dipilih</span>
@@ -602,6 +642,7 @@ const getProviderName = (tx: any) =>
             <button onClick={() => openBulk("success")} className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" />Set Sukses</button>
             <button onClick={() => openBulk("fail")} className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" />Set Gagal</button>
             <button onClick={() => setBulkProviderModal({ isOpen: true, isLoading: false })} disabled={!canBulkRetryProvider} className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed" title={canBulkRetryProvider ? "Alihkan transaksi ke provider yang aktif pada nominal masing-masing" : "Hanya bisa digunakan jika semua transaksi terpilih berstatus processing, provider_status pending, dan belum punya providerOrderID"}><Shuffle className="w-3.5 h-3.5" />Rehit Provider</button>
+            <button onClick={() => setBulkRefModal({ isOpen: true, isLoading: false })} className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" />Regenerate RefID</button>
             <button onClick={() => setSelectedIds([])} className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs">Batal Pilih</button>
           </div>
         </div>
@@ -673,20 +714,20 @@ const getProviderName = (tx: any) =>
       {/* Transactions Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-max min-w-full table-auto text-left text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                 <th className="py-3.5 pl-5 pr-2 w-8">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
-              </th>
-                <th className="py-3.5 px-5">Invoice & Waktu</th>
-                <th className="py-3.5 px-4">Game & Nominal</th>
-                <th className="py-3.5 px-4">Tujuan Akun</th>
-                <th className="py-3.5 px-4">Total Bayar</th>
-                <th className="py-3.5 px-4 min-w-[120px]">Speed</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-center">Response Provider</th>
-                <th className="py-3.5 px-5 text-center">Aksi</th>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableTxs.length === 0} className="accent-indigo-500" title="Pilih semua yang berstatus processing di halaman ini" />
+                </th>
+                <th className="py-3.5 px-4 text-center">INVOICE & WAKTU</th>
+                <th className="py-3.5 px-4 text-center">NOMINAL & GAME</th>
+                <th className="py-3.5 px-4 text-center">TUJUAN</th>
+                <th className="py-3.5 px-4 text-center">HARGA</th>
+                <th className="py-3.5 px-3 text-center">SPEED</th>
+                <th className="py-3.5 px-4 text-center">STATUS</th>
+                <th className="py-3.5 px-4 text-center min-w-[150px]">ORDER ID</th>
+                <th className="py-3.5 px-4 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -696,8 +737,8 @@ const getProviderName = (tx: any) =>
                     <td className="py-3.5 pl-5 pr-2">
                       <input type="checkbox" checked={selectedIds.includes(tx.id)} onChange={() => toggleOne(tx.id)} disabled={tx.status !== "processing"} className="accent-indigo-500 disabled:opacity-30" />
                     </td>
-                    <td className="py-3.5 px-5">
-                      <div>
+                    <td className="py-3.5 px-4 max-w-[220px]">
+                      <div className="space-y-1">
                         <a
                           href={`${PUBLIC_CLIENT_URL}/invoice/${tx.invoice_number}`}
                           target="_blank"
@@ -705,34 +746,22 @@ const getProviderName = (tx: any) =>
                           className="font-mono font-bold text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 group"
                           title="Buka halaman invoice publik"
                         >
-                          <span>{tx.invoice_number}</span>
+                          <span className="truncate">{tx.invoice_number}</span>
                           <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </a>
                         <span className="text-[10px] text-slate-500 block">
                           {new Date(tx.created_at).toLocaleString("id-ID")}
                         </span>
-                        {tx.sn && (
-                          <span className="text-[10px] font-mono text-emerald-400 block truncate max-w-[160px]" title={tx.sn}>
-                            SN: {tx.sn}
-                          </span>
-                        )}
-                        {tx.provider_order_id && (
-                          <span className="text-[10px] font-mono text-sky-400 block truncate max-w-[160px]" title={tx.provider_order_id}>
-                            Order ID: {tx.provider_order_id}
-                          </span>
-                        )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 text-center max-w-[220px]">
                       <div>
-                        <span className="font-semibold text-white block">
-                          {tx.game?.name || "-"}
-                        </span>
-                        <span className="text-slate-300">{tx.nominal?.name || "-"}</span>
+                        <span className="text-slate-300 block truncate">{tx.nominal?.name || "-"}</span>
+                        <span className="font-semibold text-white block truncate">{tx.game?.name || "-"}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono">
-                      <span className="text-slate-200 block">
+                    <td className="py-3.5 px-4 text-center font-mono max-w-[220px]">
+                      <span className="text-slate-200 block truncate">
                         {tx.customer_id}
                         {tx.server_id ? ` (${tx.server_id})` : ""}
                       </span>
@@ -740,69 +769,42 @@ const getProviderName = (tx: any) =>
                         {tx.user?.name || tx.user?.username || tx.user?.email || "Guest"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-100">
+                    <td className="py-3.5 px-4 text-center font-semibold text-slate-100 whitespace-nowrap">
                       {formatRupiah(tx.total_amount)}
                     </td>
-                    <td className="py-3.5 px-4 min-w-[120px] font-semibold text-slate-100 whitespace-nowrap">
+                    <td className="py-3.5 px-3 text-center font-semibold text-slate-100 whitespace-nowrap">
                       {calculateSpeed(tx)}
+                    </td>  
+                    <td className="py-3.5 px-4 text-center">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${providerStatusClass(tx.provider_status)}`}
+                        title={tx.provider_status || "Belum ada status provider"}
+                      >
+                        {providerStatusLabel(tx.provider_status).toUpperCase()}
+                      </span>
                     </td>
-                    
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col items-start gap-1.5">
-                        {/* Status transaksi internal */}
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            tx.status === "success"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : tx.status === "processing" || tx.status === "pending"
-                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                              : tx.status === "refunded"
-                              ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                          }`}
+
+
+                    {/* Order ID + Provider */}
+                    <td className="py-3.5 px-4 text-center max-w-[220px]">
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => setResponseModal({ isOpen: true, tx, copied: false })}
+                          className="font-mono font-bold text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 group max-w-[200px] text-left"
+                          title="Klik untuk melihat Request & Response Provider"
                         >
-                          {tx.status?.toUpperCase() || "UNKNOWN"}
-                        </span>
-
-                        {/* Status dari provider */}
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-slate-500">
-                            Provider
+                          <span className="truncate">
+                            {tx.provider_order_id && tx.provider_order_id !== "-" ? tx.provider_order_id : "Lihat Response"}
                           </span>
-
-                          <span
-                            className={`text-[11px] font-medium break-words ${
-                              /sukses|success/i.test(tx.provider_status || "")
-                                ? "text-emerald-400"
-                                : /gagal|failed|error/i.test(tx.provider_status || "")
-                                ? "text-rose-400"
-                                : /pending|processing/i.test(tx.provider_status || "")
-                                ? "text-amber-300"
-                                : "text-slate-400"
-                            }`}
-                            title={tx.provider_status || "Belum ada status provider"}
-                          >
-                            {tx.provider_status || "Belum ada status provider"}
-                          </span>
-                        </div>
+                          <Code2 className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                        <span className="text-[10px] text-slate-500 block">{getProviderName(tx)}</span>
                       </div>
                     </td>
 
-
-                    {/* Response Provider Column */}
-                    <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => setResponseModal({ isOpen: true, tx, copied: false })}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 border border-indigo-500/25 text-[11px] font-medium transition-all shadow-sm group"
-                        title="Klik untuk melihat Raw JSON Response Provider / Callback"
-                      >
-                        <Code2 className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                        <span>Response JSON</span>
-                      </button>
-                    </td>
-
-                    <td className="py-3.5 px-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setSelectedTx(tx)}
                           className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
@@ -811,7 +813,7 @@ const getProviderName = (tx: any) =>
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         {/* Tombol 1: Cek Status Provider (Hanya Get Status, Tidak Memotong Saldo) */}
-                      {canCheckStatus(tx.status) && (
+                      {canCheckStatus(tx) && (
                         <button
                           onClick={() => handleCheckStatus(tx)}
                           disabled={checkingStatusTxId === tx.id}
@@ -1013,7 +1015,7 @@ const getProviderName = (tx: any) =>
                 Request dan respons terakhir disimpan otomatis tanpa credential provider.
               </p>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {canCheckStatus(responseModal.tx.status) && (
+                {canCheckStatus(responseModal.tx) &&(
                 <button
                   onClick={() => handleCheckStatus(responseModal.tx)}
                   disabled={checkingStatusTxId === responseModal.tx.id}
@@ -1164,7 +1166,7 @@ const getProviderName = (tx: any) =>
             <div className="pt-3 border-t border-slate-800 space-y-2.5">
             {/* Baris 1: aksi baca / cek */}
             <div className="flex flex-wrap gap-2">
-              {canCheckStatus(selectedTx.status) && (
+              {canCheckStatus(selectedTx) && (
               <button
                 onClick={() => handleCheckStatus(selectedTx)}
                 disabled={checkingStatusTxId === selectedTx.id}
@@ -1333,6 +1335,17 @@ const getProviderName = (tx: any) =>
         </div>,
         document.body
       )}
+
+      <ConfirmModal
+        isOpen={bulkRefModal.isOpen}
+        isLoading={bulkRefModal.isLoading}
+        variant="warning"
+        title={`Regenerate RefID (${selectedIds.length} transaksi)`}
+        message="ProviderRefID hanya akan diganti pada transaksi yang belum memiliki order resmi di provider. Transaksi yang tidak memenuhi syarat akan dilewati dan ditampilkan pada hasil."
+        confirmText="Regenerate RefID"
+        onClose={() => setBulkRefModal({ isOpen: false, isLoading: false })}
+        onConfirm={executeBulkRegenerateRef}
+      />
 
       {bulkResult &&
         createPortal(

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, User as UserIcon } from "lucide-react";
+import { Menu, Moon, Sun, User as UserIcon } from "lucide-react";
 import { getStoredUser, AdminUser } from "@/lib/auth";
 
 interface HeaderProps {
@@ -13,10 +13,24 @@ interface HeaderProps {
 export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<AdminUser | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     setUser(getStoredUser());
+    const savedTheme = localStorage.getItem("topup_admin_theme");
+    const nextTheme = savedTheme === "light" ? "light" : "dark";
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
   }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("topup_admin_theme", nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  };
 
   if (pathname === "/login") return null;
 
@@ -34,6 +48,10 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
         return "Digiflazz Command Center";
       case "/kiosgamer":
         return "Kiosgamer Command Center";
+      case "/voca":
+        return "Voca Command Center";
+      case "/topupkuy":
+        return "TopupKuy Command Center";
       case "/providers":
         return "Providers Center";
       case "/ip-whitelist":
@@ -76,6 +94,16 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+          title={theme === "dark" ? "Gunakan tema terang" : "Gunakan tema gelap"}
+          aria-label={theme === "dark" ? "Gunakan tema terang" : "Gunakan tema gelap"}
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+
         {/* Status Indicator */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

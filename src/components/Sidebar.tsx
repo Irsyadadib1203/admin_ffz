@@ -67,6 +67,7 @@ const allNavItems: NavItem[] = [
       { name: "Kiosgamer Center", href: "/kiosgamer", resource: "kiosgamer" },
       { name: "Digiflazz Center", href: "/digiflazz", resource: "digiflazz" },
       { name: "Voca Center", href: "/voca", resource: "settings" },
+      { name: "TopupKuy Center", href: "/topupkuy", resource: "settings" },
     ],
   },
   { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
@@ -90,7 +91,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const isSuperAdmin = currentUser?.role === "superadmin";
 
   const isProviderCenterActive =
-    pathname.startsWith("/kiosgamer") || pathname.startsWith("/digiflazz") || pathname.startsWith("/voca");
+    pathname.startsWith("/kiosgamer") || pathname.startsWith("/digiflazz") || pathname.startsWith("/voca") || pathname.startsWith("/topupkuy");
   const [providerCenterExpanded, setProviderCenterExpanded] = useState(
     isProviderCenterActive
   );
