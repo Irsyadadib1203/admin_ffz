@@ -66,16 +66,16 @@ function InfoCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-4 space-y-2">
+    <div className="rounded-xl bg-slate-950/60 border border-slate-800 p-3 space-y-1">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <div className="space-y-1">{children}</div>
+      <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
 
 function RefRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4 py-3">
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 py-1.5">
       <span className="text-xs text-slate-500 shrink-0">{label}</span>
       <span className="font-mono text-xs text-slate-200 break-all sm:text-right" title={value || ""}>
         {value || "-"}
@@ -1098,223 +1098,232 @@ const providerStatusClass = (status?: string) => {
         document.body
       )}
 
-      {/* Transaction Detail Modal */}
+            {/* Transaction Detail Modal */}
       {selectedTx &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
-            onClick={() => setSelectedTx(null)}
-          >
+        (() => {
+          // Status final: hanya tombol "Lihat Response JSON" yang tersedia
+          const isFinal = ["success", "failed", "refunded"].includes(selectedTx.status);
+
+          return createPortal(
             <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Detail transaksi"
-              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
+              onClick={() => setSelectedTx(null)}
             >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-800">
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">
-                    Transactions Center
-                  </p>
-                  <h3 className="text-lg font-bold text-white">Detail Transaksi</h3>
-                  <a
-                    href={`${PUBLIC_CLIENT_URL}/invoice/${selectedTx.invoice_number}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-mono text-indigo-400 font-bold hover:text-indigo-300 inline-flex items-center gap-1 transition-colors"
-                    title="Buka invoice publik"
-                  >
-                    {selectedTx.invoice_number}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${txStatusBadge(selectedTx.status).cls}`}
-                  >
-                    {txStatusBadge(selectedTx.status).label.toUpperCase()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTx(null)}
-                    className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-                    title="Tutup"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="px-6 py-6 space-y-7">
-                {/* Bagian 1: Ringkasan */}
-                <section className="space-y-3">
-                  <h4 className="text-xs font-semibold text-slate-300">Ringkasan Pesanan</h4>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <InfoCard label="Game & Produk">
-                      <p className="text-sm font-semibold text-white">{selectedTx.game?.name || "-"}</p>
-                      <p className="text-xs text-slate-400">{selectedTx.nominal?.name || "-"}</p>
-                    </InfoCard>
-
-                    <InfoCard label="Tujuan Akun">
-                      <p className="text-sm font-semibold font-mono text-emerald-400 break-all">
-                        {selectedTx.customer_id}
-                        {selectedTx.server_id ? ` (${selectedTx.server_id})` : ""}
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Detail transaksi"
+                className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl my-auto max-h-[95vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-slate-800">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">
+                        Detail Transaksi
                       </p>
-                      <p className="text-xs text-slate-400">Nickname: {selectedTx.nickname || "-"}</p>
-                    </InfoCard>
-
-                    <InfoCard label="Modal">
-                      <p className="text-sm font-semibold text-white">{formatRupiah(selectedTx.base_price)}</p>
-                      <p className="text-xs text-slate-400">
-                        Bayar: {selectedTx.payment_method || "-"}
-                      </p>
-                    </InfoCard>
+                      <a
+                        href={`${PUBLIC_CLIENT_URL}/invoice/${selectedTx.invoice_number}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono text-indigo-400 font-bold hover:text-indigo-300 inline-flex items-center gap-1 transition-colors max-w-full"
+                        title="Buka invoice publik"
+                      >
+                        <span className="truncate">{selectedTx.invoice_number}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    </div>
                   </div>
-                </section>
-
-                {/* Bagian 2: Status Provider */}
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-slate-300">Status Provider</h4>
+                  <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold ${providerStatusClass(selectedTx.provider_status)}`}
-                      title={selectedTx.provider_status || ""}
+                      className={`hidden sm:inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${txStatusBadge(selectedTx.status).cls}`}
                     >
-                      {providerStatusLabel(selectedTx.provider_status).toUpperCase()}
+                      {txStatusBadge(selectedTx.status).label.toUpperCase()}
                     </span>
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Speed</p>
-                        <p className="flex items-center gap-1.5 font-mono text-sm font-semibold text-indigo-300">
-                          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                          {calculateSpeed(selectedTx)}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-                          Provider Latency
-                        </p>
-                        <p className="font-mono text-sm font-semibold text-sky-300">
-                          {calculateLatency(selectedTx)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {(selectedTx.sn || selectedTx.payment_reference) && (
-                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
-                          Serial Number (SN)
-                        </p>
-                        <p className="font-mono text-xs text-emerald-300 break-all">
-                          {selectedTx.sn || selectedTx.payment_reference}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="space-y-1 border-t border-slate-800 pt-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pesan</p>
-                      <p className="text-xs leading-relaxed text-slate-300 break-words">
-                        {selectedTx.provider_message || "-"}
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Bagian 3: Referensi */}
-                <section className="space-y-3">
-                  <h4 className="text-xs font-semibold text-slate-300">Referensi Provider</h4>
-                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-4 divide-y divide-slate-800">
-                    <RefRow label="Provider" value={getProviderName(selectedTx)} />
-                    <RefRow label="Provider Ref" value={selectedTx.provider_ref_id} />
-                    <RefRow label="Provider Order ID" value={selectedTx.provider_order_id} />
-                  </div>
-                </section>
-              </div>
-
-              {/* Bagian 4: Aksi */}
-              <div className="px-6 py-5 border-t border-slate-800 bg-slate-950/40 rounded-b-3xl space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {canCheckStatus(selectedTx) && (
                     <button
-                      onClick={() => handleCheckStatus(selectedTx)}
-                      disabled={checkingStatusTxId === selectedTx.id}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 border border-sky-500/30"
-                      title="Hanya mengambil status terbaru dari provider tanpa memotong saldo"
+                      type="button"
+                      onClick={() => setSelectedTx(null)}
+                      className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                      title="Tutup"
                     >
-                      <RefreshCw
-                        className={`w-3.5 h-3.5 text-sky-400 ${checkingStatusTxId === selectedTx.id ? "animate-spin" : ""}`}
-                      />
-                      Cek Status Provider
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      const tx = selectedTx;
-                      setSelectedTx(null);
-                      setResponseModal({ isOpen: true, tx, copied: false });
-                    }}
-                    className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center gap-1.5"
-                  >
-                    <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-                    Lihat Response JSON
-                  </button>
-
-                  {canRegenerateRef(selectedTx.status) && (
-                    <button
-                      onClick={() => handleRegenRefPrompt(selectedTx)}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30"
-                    >
-                      <Hash className="w-3.5 h-3.5" />
-                      Regenerate Ref
-                    </button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
-                  <div className="flex flex-wrap gap-2">
-                    {!["success", "refunded"].includes(selectedTx.status) && (
-                      <>
-                        {canRetryTransaction(selectedTx.status) && (
-                          <button
-                            onClick={() => handleRetryPrompt(selectedTx)}
-                            className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                <div className="px-5 py-4 space-y-4">
+                  {/* Ringkasan */}
+                  <section className="space-y-2">
+                    <h4 className="text-xs font-semibold text-slate-300">Ringkasan Pesanan</h4>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <InfoCard label="Game & Produk">
+                        <p className="text-sm font-semibold text-white truncate">{selectedTx.game?.name || "-"}</p>
+                        <p className="text-xs text-slate-400 truncate">{selectedTx.nominal?.name || "-"}</p>
+                      </InfoCard>
+
+                      <InfoCard label="Tujuan Akun">
+                        <p className="text-sm font-semibold font-mono text-emerald-400 break-all">
+                          {selectedTx.customer_id}
+                          {selectedTx.server_id ? ` (${selectedTx.server_id})` : ""}
+                        </p>
+                        <p className="text-xs text-slate-400 truncate">Nickname: {selectedTx.nickname || "-"}</p>
+                      </InfoCard>
+
+                      <InfoCard label="Modal">
+                        <p className="text-sm font-semibold text-white">{formatRupiah(selectedTx.base_price)}</p>
+                        <p className="text-xs text-slate-400 truncate">
+                          Bayar: {selectedTx.payment_method || "-"}
+                        </p>
+                      </InfoCard>
+                    </div>
+                  </section>
+
+                  {/* Status Provider */}
+                  <section className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-slate-300">Status Provider</h4>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold ${providerStatusClass(selectedTx.provider_status)}`}
+                        title={selectedTx.provider_status || ""}
+                      >
+                        {providerStatusLabel(selectedTx.provider_status).toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-950/60 border border-slate-800 p-3 space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Speed</p>
+                          <p className="flex items-center gap-1.5 font-mono text-sm font-semibold text-indigo-300">
+                            <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                            {calculateSpeed(selectedTx)}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                            Provider Latency
+                          </p>
+                          <p className="font-mono text-sm font-semibold text-sky-300">
+                            {calculateLatency(selectedTx)}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5 col-span-2 sm:col-span-1 min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
+                            Serial Number (SN)
+                          </p>
+                          <p
+                            className="font-mono text-xs text-emerald-300 truncate"
+                            title={selectedTx.sn || selectedTx.payment_reference || ""}
                           >
-                            Proses Ulang Order
+                            {selectedTx.sn || selectedTx.payment_reference || "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-0.5 border-t border-slate-800 pt-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pesan</p>
+                        <p
+                          className="text-xs leading-relaxed text-slate-300 break-words line-clamp-2"
+                          title={selectedTx.provider_message || ""}
+                        >
+                          {selectedTx.provider_message || "-"}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Referensi */}
+                  <section className="space-y-2">
+                    <h4 className="text-xs font-semibold text-slate-300">Referensi Provider</h4>
+                    <div className="rounded-xl bg-slate-950/60 border border-slate-800 px-3 divide-y divide-slate-800">
+                      <RefRow label="Provider" value={getProviderName(selectedTx)} />
+                      <RefRow label="Provider Ref" value={selectedTx.provider_ref_id} />
+                      <RefRow label="Provider Order ID" value={selectedTx.provider_order_id} />
+                    </div>
+                  </section>
+                </div>
+
+                {/* Aksi */}
+                <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/40 rounded-b-2xl">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          const tx = selectedTx;
+                          setSelectedTx(null);
+                          setResponseModal({ isOpen: true, tx, copied: false });
+                        }}
+                        className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center gap-1.5"
+                      >
+                        <Code2 className="w-3.5 h-3.5 text-indigo-400" />
+                        Lihat Response JSON
+                      </button>
+
+                      {!isFinal && (
+                        <>
+                          {canCheckStatus(selectedTx) && (
+                            <button
+                              onClick={() => handleCheckStatus(selectedTx)}
+                              disabled={checkingStatusTxId === selectedTx.id}
+                              className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 border border-sky-500/30"
+                              title="Hanya mengambil status terbaru dari provider tanpa memotong saldo"
+                            >
+                              <RefreshCw
+                                className={`w-3.5 h-3.5 text-sky-400 ${checkingStatusTxId === selectedTx.id ? "animate-spin" : ""}`}
+                              />
+                              Cek Status Provider
+                            </button>
+                          )}
+
+                          {canRegenerateRef(selectedTx.status) && (
+                            <button
+                              onClick={() => handleRegenRefPrompt(selectedTx)}
+                              className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30"
+                            >
+                              <Hash className="w-3.5 h-3.5" />
+                              Regenerate Ref
+                            </button>
+                          )}
+
+                          {canRetryTransaction(selectedTx.status) && (
+                            <button
+                              onClick={() => handleRetryPrompt(selectedTx)}
+                              className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                            >
+                              Proses Ulang Order
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleSuccessPrompt(selectedTx)}
+                            className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                          >
+                            Set Sukses Manual
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleSuccessPrompt(selectedTx)}
-                          className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
-                        >
-                          Set Sukses Manual
-                        </button>
-                        <button
-                          onClick={() => handleRefundPrompt(selectedTx)}
-                          className="whitespace-nowrap px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
-                        >
-                          Refund Saldo
-                        </button>
-                      </>
-                    )}
+                          <button
+                            onClick={() => handleRefundPrompt(selectedTx)}
+                            className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
+                          >
+                            Refund Saldo
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedTx(null)}
+                      className="whitespace-nowrap px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                    >
+                      Tutup
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSelectedTx(null)}
-                    className="whitespace-nowrap px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-                  >
-                    Tutup
-                  </button>
                 </div>
               </div>
-            </div>
-          </div>,
-          document.body
-        )}
+            </div>,
+            document.body
+          );
+        })()}
 
       {bulkModal.isOpen && bulkModal.action &&
         createPortal(
