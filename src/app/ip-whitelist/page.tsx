@@ -32,6 +32,9 @@ export default function IPWhitelistPage() {
   // Form states
   const [newIP, setNewIP] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  const [newOtpCode, setNewOtpCode] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [blockIP, setBlockIP] = useState("");
   const [blockReason, setBlockReason] = useState("Spam / Percobaan akses ilegal");
   const [blockHours, setBlockHours] = useState(24);
@@ -83,17 +86,32 @@ export default function IPWhitelistPage() {
 
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedCode = newOtpCode.trim();
+    if (trimmedCode.length !== 6) {
+      setAddError("Masukkan 6 digit kode OTP authenticator.");
+      return;
+    }
+
+    setAddLoading(true);
+    setAddError(null);
     try {
       await api.post("/admin/ip-whitelist", {
-        ip_address: newIP,
-        label: newLabel,
+        ip_address: newIP.trim(),
+        label: newLabel.trim(),
+        code: trimmedCode,
       });
       setIsAddModalOpen(false);
       setNewIP("");
       setNewLabel("");
+      setNewOtpCode("");
+      setAddError(null);
       refreshWhitelists();
     } catch (err: any) {
-      alert("Gagal menambahkan IP: " + (err.response?.data?.message || err.message));
+      setAddError(
+        err.response?.data?.message || err.message || "Gagal menambahkan IP."
+      );
+    } finally {
+      setAddLoading(false);
     }
   };
 
@@ -221,7 +239,13 @@ export default function IPWhitelistPage() {
               Menampilkan IP address yang memiliki izin mengeksekusi API H2H Seller.
             </span>
             <button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                setNewIP("");
+                setNewLabel("");
+                setNewOtpCode("");
+                setAddError(null);
+                setIsAddModalOpen(true);
+              }}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/20"
             >
               <Plus className="w-4 h-4" />
@@ -463,6 +487,12 @@ export default function IPWhitelistPage() {
               </button>
             </div>
             <form onSubmit={handleAddWhitelist} className="space-y-3.5 text-xs">
+              {addError && (
+                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+                  {addError}
+                </div>
+              )}
+
               <div>
                 <label className="block text-slate-300 font-medium mb-1">
                   Alamat IP (IPv4 / IPv6) *
@@ -472,7 +502,10 @@ export default function IPWhitelistPage() {
                   required
                   placeholder="Contoh: 103.150.22.45 atau 127.0.0.1"
                   value={newIP}
-                  onChange={(e) => setNewIP(e.target.value)}
+                  onChange={(e) => {
+                    setNewIP(e.target.value);
+                    if (addError) setAddError(null);
+                  }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -490,19 +523,51 @@ export default function IPWhitelistPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              {/* OTP Authenticator Verification Section */}
+              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-1.5 text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="font-semibold text-slate-200 text-xs">Verifikasi Authenticator (OTP)</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Masukkan <span className="text-white font-medium">6 digit kode authenticator</span> (seperti saat login) untuk mengonfirmasi penambahan IP Whitelist baru.
+                </p>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1.5 text-center">
+                    Kode 6-Digit Authenticator (TOTP) *
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    maxLength={6}
+                    value={newOtpCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setNewOtpCode(val);
+                      if (addError) setAddError(null);
+                    }}
+                    placeholder="000000"
+                    className="w-full text-center tracking-[0.5em] font-mono text-lg py-2 px-3 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
+                  disabled={addLoading}
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-600/30"
+                  disabled={addLoading || newOtpCode.length !== 6 || !newIP.trim()}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold shadow-lg shadow-indigo-600/30 transition-colors"
                 >
-                  Simpan IP
+                  {addLoading ? "Memverifikasi..." : "Verifikasi & Simpan IP"}
                 </button>
               </div>
             </form>

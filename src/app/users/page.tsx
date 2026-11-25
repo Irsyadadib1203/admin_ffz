@@ -18,6 +18,18 @@ export default function UsersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
+  // 2FA Authenticator state untuk membuka modal edit
+  const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
+  const [targetUserForEdit, setTargetUserForEdit] = useState<any | null>(null);
+  const [twoFACode, setTwoFACode] = useState("");
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFAError, setTwoFAError] = useState<string | null>(null);
+
+  // API Key management state di dalam modal edit
+  const [isCopied, setIsCopied] = useState(false);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [confirmRegenerateKey, setConfirmRegenerateKey] = useState(false);
+
   // Confirmation states
   const [confirmEdit, setConfirmEdit] = useState<{
     isOpen: boolean;
@@ -62,8 +74,72 @@ export default function UsersPage() {
     }).format(val || 0);
   };
 
+  const requestOpenEdit = (user: any) => {
+    setTargetUserForEdit(user);
+    setTwoFACode("");
+    setTwoFAError(null);
+    setIs2FAModalOpen(true);
+  };
+
+  const handleVerify2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetUserForEdit) return;
+
+    const trimmedCode = twoFACode.trim();
+    if (trimmedCode.length !== 6) {
+      setTwoFAError("Masukkan 6 digit kode authenticator.");
+      return;
+    }
+
+    setTwoFALoading(true);
+    setTwoFAError(null);
+
+    try {
+      const res = await api.post(
+        `/admin/users/${targetUserForEdit.id}/verify-edit-2fa`,
+        { code: trimmedCode }
+      );
+      const fullUserData = res.data.data;
+      setIs2FAModalOpen(false);
+      openEditModal(fullUserData);
+    } catch (err: any) {
+      setTwoFAError(
+        err.response?.data?.message || "Kode verifikasi salah atau kedaluwarsa."
+      );
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleGenerateApiKey = async () => {
+    if (!selectedUser) return;
+    setIsGeneratingKey(true);
+    try {
+      const res = await api.post(`/admin/users/${selectedUser.id}/generate-api-key`);
+      const newApiKey = res.data.data;
+      setSelectedUser((prev: any) => ({
+        ...prev,
+        api_key: newApiKey,
+      }));
+      setConfirmRegenerateKey(false);
+      mutate();
+    } catch (err: any) {
+      alert("Gagal generate API Key: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
+  const copyApiKey = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const openEditModal = (user: any) => {
     setSelectedUser(user);
+    setIsCopied(false);
     setFormData({
       name: user.name,
       email: user.email,
@@ -133,7 +209,7 @@ export default function UsersPage() {
             Pengguna & Akun Reseller Mitra
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Kelola peran hak akses (Admin/Operator), Tier Harga (VIP/Reseller), dan Saldo
+            Kelola peran hak akses (Admin/Operator/Reseller) dan Saldo
           </p>
         </div>
 
@@ -183,7 +259,6 @@ export default function UsersPage() {
             <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
               <th className="py-3.5 px-5">Pengguna</th>
               <th className="py-3.5 px-4">Role & Akses</th>
-              <th className="py-3.5 px-4">Tier Harga</th>
               <th className="py-3.5 px-4">Saldo Akun</th>
               <th className="py-3.5 px-4">API Key H2H</th>
               <th className="py-3.5 px-5 text-right">Aksi</th>
@@ -221,33 +296,31 @@ export default function UsersPage() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4">
-                    <span className="font-semibold text-indigo-300 uppercase">
-                      {u.tier}
-                    </span>
-                  </td>
                   <td className="py-3.5 px-4 font-semibold text-emerald-400">
                     {formatRupiah(u.balance)}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px]">
                     {u.api_key ? (
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(u.api_key.key)}
-                        title="Salin API key"
-                        className="inline-flex items-center gap-1 text-amber-400 font-semibold hover:text-amber-300"
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-slate-400 select-none cursor-default"
+                        style={{ userSelect: "none", WebkitUserSelect: "none" }}
+                        onCopy={(e) => e.preventDefault()}
+                        title="API Key disensor (Hanya dapat dicek/disalin dari Modal Edit)"
                       >
-                        {u.api_key.key}<Copy className="w-3 h-3" />
-                      </button>
+                        <Shield className="w-3 h-3 text-amber-400/80 flex-shrink-0" />
+                        <span className="font-mono text-[11px] tracking-widest text-slate-400 select-none pointer-events-none">
+                          ••••••••••••••••
+                        </span>
+                      </div>
                     ) : (
                       <span className="text-slate-500">-</span>
                     )}
                   </td>
                   <td className="py-3.5 px-5 text-right">
                     <button
-                      onClick={() => openEditModal(u)}
+                      onClick={() => requestOpenEdit(u)}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-                      title="Edit User & Saldo"
+                      title="Edit Pengguna (Verifikasi 2FA)"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -256,7 +329,7 @@ export default function UsersPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-slate-500">
+                <td colSpan={5} className="py-10 text-center text-slate-500">
                   {isLoading ? "Memuat pengguna..." : "Tidak ada pengguna."}
                 </td>
               </tr>
@@ -312,39 +385,21 @@ export default function UsersPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 font-medium mb-1">
-                      Role Akun
-                    </label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
-                    >
-                      <option value="member">Member</option>
-                      <option value="reseller">Reseller H2H</option>
-                      <option value="operator">Operator</option>
-                      <option value="admin">Admin</option>
-                      <option value="superadmin">Superadmin</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-medium mb-1">
-                      Tier Harga
-                    </label>
-                    <select
-                      value={formData.tier}
-                      onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
-                    >
-                      <option value="public">Publik</option>
-                      <option value="member">Member</option>
-                      <option value="vip">VIP</option>
-                      <option value="reseller">Reseller H2H</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Role Akun
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
+                  >
+                    <option value="member">Member</option>
+                    <option value="reseller">Reseller H2H</option>
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
                 </div>
 
                 {/* Balance Adjustment Section */}
@@ -384,6 +439,88 @@ export default function UsersPage() {
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none"
                     />
                   </div>
+                </div>
+
+                {/* H2H API Key Section */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-[11px] font-bold text-slate-200">
+                        API Key H2H Mitra
+                      </span>
+                    </div>
+                    {selectedUser.api_key && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedUser.api_key ? (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">
+                          API Key User
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={selectedUser.api_key.key}
+                            className="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-slate-100 font-mono text-[11px] focus:outline-none select-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => copyApiKey(selectedUser.api_key.key)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 font-semibold text-xs whitespace-nowrap transition-colors"
+                            title="Salin API Key"
+                          >
+                            {isCopied ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-emerald-400">Tersalin</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Salin</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400">
+                          Ingin memperbarui API Key akun ini?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmRegenerateKey(true)}
+                          disabled={isGeneratingKey}
+                          className="text-[11px] text-rose-400 hover:text-rose-300 font-medium underline underline-offset-2 disabled:opacity-50"
+                        >
+                          {isGeneratingKey ? "Memproses..." : "Regenerate API Key"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                      <p className="text-[11px] text-slate-400">
+                        Pengguna ini belum memiliki API Key H2H.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleGenerateApiKey}
+                        disabled={isGeneratingKey}
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors disabled:opacity-50"
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        <span>{isGeneratingKey ? "Membuat..." : "Generate API Key"}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -468,38 +605,20 @@ export default function UsersPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 font-medium mb-1">
-                      Role Akun
-                    </label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
-                    >
-                      <option value="member">Member</option>
-                      <option value="reseller">Reseller H2H</option>
-                      <option value="operator">Operator</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-medium mb-1">
-                      Tier Harga
-                    </label>
-                    <select
-                      value={formData.tier}
-                      onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
-                    >
-                      <option value="public">Publik</option>
-                      <option value="member">Member</option>
-                      <option value="vip">VIP</option>
-                      <option value="reseller">Reseller H2H</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Role Akun
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-slate-200 focus:outline-none"
+                  >
+                    <option value="member">Member</option>
+                    <option value="reseller">Reseller H2H</option>
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -534,7 +653,6 @@ export default function UsersPage() {
             Perubahan untuk akun <strong className="text-white">{selectedUser?.name}</strong>:
             <ul className="mt-2 space-y-1 text-slate-300">
               <li>• Role: <span className="font-semibold text-indigo-300 uppercase">{formData.role}</span></li>
-              <li>• Tier: <span className="font-semibold text-indigo-300 uppercase">{formData.tier}</span></li>
               {formData.balance_adjustment !== 0 && (
                 <li className="text-amber-400 font-bold">
                   • Penyesuaian Saldo: {formData.balance_adjustment > 0 ? "+" : ""}{formatRupiah(formData.balance_adjustment)}
@@ -567,6 +685,130 @@ export default function UsersPage() {
         variant="warning"
         isLoading={confirmCreate.isLoading}
       />
+
+      {/* Confirmation Modal - Regenerate API Key */}
+      <ConfirmModal
+        isOpen={confirmRegenerateKey}
+        onClose={() => setConfirmRegenerateKey(false)}
+        onConfirm={handleGenerateApiKey}
+        title="Buat Ulang API Key (Regenerate)?"
+        message={
+          <>
+            Anda akan membuat API Key baru untuk akun{" "}
+            <strong className="text-white">{selectedUser?.name}</strong>.
+            <br />
+            <span className="text-rose-400 font-semibold block mt-1">
+              Peringatan: API Key lama akan langsung dinonaktifkan dan koneksi H2H mitra dengan key lama akan terputus.
+            </span>
+          </>
+        }
+        confirmText="Ya, Buat Ulang API Key"
+        cancelText="Batal"
+        variant="warning"
+        isLoading={isGeneratingKey}
+      />
+
+      {/* Modal 2FA Authenticator Verification */}
+      {is2FAModalOpen && targetUserForEdit &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
+            onClick={() => {
+              if (!twoFALoading) {
+                setIs2FAModalOpen(false);
+                setTwoFAError(null);
+              }
+            }}
+          >
+            <div
+              className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Verifikasi Authenticator
+                    </h3>
+                    <p className="text-[10px] text-slate-400">
+                      Keamanan Akses Edit Pengguna
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={twoFALoading}
+                  onClick={() => {
+                    setIs2FAModalOpen(false);
+                    setTwoFAError(null);
+                  }}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleVerify2FASubmit} className="space-y-4 text-xs">
+                <div className="text-slate-300 text-xs">
+                  Masukkan <span className="font-bold text-white">6 digit kode authenticator</span> (seperti saat login) untuk membuka modal edit pengguna{" "}
+                  <span className="font-semibold text-indigo-400">{targetUserForEdit.name}</span>.
+                </div>
+
+                {twoFAError && (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+                    {twoFAError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1.5 text-center">
+                    Kode 6-Digit Authenticator (TOTP)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoFocus
+                    required
+                    maxLength={6}
+                    value={twoFACode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setTwoFACode(val);
+                      if (twoFAError) setTwoFAError(null);
+                    }}
+                    placeholder="000000"
+                    className="w-full text-center tracking-[0.5em] font-mono text-xl py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    disabled={twoFALoading}
+                    onClick={() => {
+                      setIs2FAModalOpen(false);
+                      setTwoFAError(null);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={twoFALoading || twoFACode.length !== 6}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold shadow-lg shadow-indigo-600/30 transition-colors"
+                  >
+                    {twoFALoading ? "Memverifikasi..." : "Verifikasi & Buka"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
