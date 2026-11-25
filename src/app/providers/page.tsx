@@ -128,6 +128,16 @@ type SIPASSettings = {
   pin_configured: boolean;
 };
 
+type IDVSettings = {
+  configured: boolean;
+  name: string;
+  base_url: string;
+  partner_id: string;
+  idv_user_id: string;
+  is_active: boolean;
+  secret_token_configured: boolean;
+};
+
 type KiosgamerStatus = {
   configured: boolean;
   status: string;
@@ -138,7 +148,8 @@ type KiosgamerStatus = {
   last_checked_at?: string | null;
   last_recovered_at?: string | null;
 };
-
+  const isForeignUnit = (p: ProviderItem) =>
+  ["SHELL", "UCOIN"].includes(p.balance_unit?.toUpperCase() ?? "");
 export default function ProvidersPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -154,11 +165,8 @@ export default function ProvidersPage() {
   );
   const sortedProviders = useMemo(() => {
     if (!providers) return [];
-    const isShell = (p: ProviderItem) => p.balance_unit?.toUpperCase() === "SHELL";
     return [...providers].sort((a, b) => {
-      // Provider ber-satuan Shell (Kiosgamer) tidak sebanding dengan Rupiah,
-      // jadi ditaruh paling bawah dan diurutkan di antara sesamanya.
-      const unitDiff = Number(isShell(a)) - Number(isShell(b));
+      const unitDiff = Number(isForeignUnit(a)) - Number(isForeignUnit(b));
       if (unitDiff !== 0) return unitDiff;
       const diff = (b.balance ?? 0) - (a.balance ?? 0);
       if (diff !== 0) return diff;
@@ -224,6 +232,12 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
   const [sipasPassword, setSipasPassword] = useState("");
   const [sipasPin, setSipasPin] = useState("");
 
+    // IDV State
+  const [idv, setIdv] = useState<IDVSettings | null>(null);
+  const [idvPartnerId, setIdvPartnerId] = useState("");
+  const [idvSecretToken, setIdvSecretToken] = useState("");
+  const [idvUserId, setIdvUserId] = useState("");
+
   // Kiosgamer States
   const [kiosStatus, setKiosStatus] = useState<KiosgamerStatus | null>(null);
   const [kiosSessionKey, setKiosSessionKey] = useState("");
@@ -268,9 +282,9 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
   };
 
   const formatBalance = (val?: number, unit?: string) => {
-    if (unit?.toUpperCase() === "SHELL") {
-      return `${(val || 0).toLocaleString("id-ID")} Shell`;
-    }
+    const u = unit?.toUpperCase();
+    if (u === "SHELL") return `${(val || 0).toLocaleString("id-ID")} Shell`;
+    if (u === "UCOIN") return `${(val || 0).toLocaleString("id-ID")} Ucoin`;
     return formatRupiah(val);
   };
 
@@ -352,6 +366,8 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
     setVexagameWebhookSecret("");
     setSipasPassword("");
     setSipasPin("");
+    setIdv(null);
+    setIdvSecretToken("");
     setName(item.name);
     setBaseURL(item.base_url);
     setIsActive(item.is_active);
@@ -455,6 +471,19 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
         setName(data.name);
         setBaseURL(data.base_url);
         setVocaMerchantId(data.merchant_id || "");
+        setIsActive(data.is_active);
+      } catch {
+        // fallback
+      }
+      } else if (code === "IDV") {
+      try {
+        const res = await api.get("/admin/providers/idv");
+        const data: IDVSettings = res.data.data;
+        setIdv(data);
+        setName(data.name);
+        setBaseURL(data.base_url);
+        setIdvPartnerId(data.partner_id || "");
+        setIdvUserId(data.idv_user_id || "");
         setIsActive(data.is_active);
       } catch {
         // fallback
@@ -654,6 +683,30 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       setNotice("Konfigurasi SIPAS tersimpan.");
     } catch (error: any) {
       setNotice(error.response?.data?.message || "Gagal menyimpan SIPAS.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+    const saveIDV = async () => {
+    setSaving(true);
+    setNotice("");
+    try {
+      await api.put("/admin/providers/idv", {
+        name,
+        base_url: baseURL,
+        partner_id: idvPartnerId,
+        secret_token: idvSecretToken,
+        idv_user_id: idvUserId,
+        is_active: isActive,
+      });
+      setIdvSecretToken("");
+      const fresh = await api.get("/admin/providers/idv");
+      setIdv(fresh.data.data);
+      await mutate();
+      setNotice("Konfigurasi IDV tersimpan.");
+    } catch (error: any) {
+      setNotice(error.response?.data?.message || "Gagal menyimpan IDV.");
     } finally {
       setSaving(false);
     }
@@ -1619,6 +1672,64 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
               </div>
             )}
 
+                        {/* IDV MODAL CONTENT */}
+            {selected.code.toUpperCase() === "IDV" && (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Base URL IDV</label>
+                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
+                    placeholder="https://... (URL dari Nuon, tanpa /idv)"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Partner ID</label>
+                  <input value={idvPartnerId} onChange={(e) => setIdvPartnerId(e.target.value)}
+                    inputMode="numeric" placeholder="Contoh: 99999"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Secret Token{" "}
+                    {idv?.secret_token_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input type="password" value={idvSecretToken} onChange={(e) => setIdvSecretToken(e.target.value)}
+                      placeholder={idv?.secret_token_configured ? "Kosongkan untuk mempertahankan Secret Token saat ini" : "Secret token dari Nuon"}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">IDV User ID (akun reseller)</label>
+                  <input value={idvUserId} onChange={(e) => setIdvUserId(e.target.value)}
+                    placeholder="Akun IDV yang saldo Ucoin-nya dipakai belanja"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  IDV tidak menyediakan callback. Status transaksi dipantau lewat cek status/reconciler.
+                  Pastikan IP server sudah di-whitelist di Nuon, dan kode produk nominal berformat{" "}
+                  <code className="font-mono text-indigo-400">product:item</code> (contoh{" "}
+                  <code className="font-mono text-indigo-400">free_fire:freefire_5</code>).
+                </p>
+                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
+                  <span>Aktifkan IDV</span>
+                </label>
+                <div className="flex justify-end pt-2">
+                  <button onClick={saveIDV} disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
+                    <Save className="h-4 w-4" />
+                    {saving ? "Menyimpan..." : "Simpan IDV"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* VOCA MODAL CONTENT */}
             {selected.code.toUpperCase() === "VOCA" && (
               <div className="space-y-4 text-xs">
@@ -1690,7 +1801,8 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
                selected.code.toUpperCase() !== "VOCA" &&
                selected.code.toUpperCase() !== "EXCELLSTORE" &&
                selected.code.toUpperCase() !== "VEXAGAME" &&
-               selected.code.toUpperCase() !== "SIPAS" && (  
+              selected.code.toUpperCase() !== "SIPAS" &&
+               selected.code.toUpperCase() !== "IDV" && (  
                 <div className="space-y-4 text-xs">
                   <div>
                     <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>

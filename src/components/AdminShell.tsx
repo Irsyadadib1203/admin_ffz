@@ -29,6 +29,7 @@ const pathToResourceMap: Record<string, string> = {
   "/voca": "settings",
   "/topupkuy": "settings",
   "/roles": "roles",
+  "/redeem-center/idv": "settings",
 };
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {

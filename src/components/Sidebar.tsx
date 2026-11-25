@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
+  Ticket,
 } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -64,6 +65,14 @@ const allNavItems: NavItem[] = [
       { name: "TopupKuy Center", href: "/topupkuy", resource: "settings" },
     ],
   },
+    {
+    name: "Redeem Center",
+    icon: Ticket,
+    resource: "settings",
+    children: [
+      { name: "IDV Redeem", href: "/redeem-center/idv", resource: "settings" },
+    ],
+  },
   { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
   { name: "IP Whitelist & Security", href: "/ip-whitelist", icon: ShieldCheck, resource: "ip_whitelist" },
   { name: "Users & Resellers", href: "/users", icon: Users, resource: "users" },
@@ -82,17 +91,19 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const currentUser = getStoredUser();
   const isSuperAdmin = currentUser?.role === "superadmin";
 
-  const isProviderCenterActive =
-    pathname.startsWith("/kiosgamer") || pathname.startsWith("/digiflazz") || pathname.startsWith("/voca") || pathname.startsWith("/topupkuy");
-  const [providerCenterExpanded, setProviderCenterExpanded] = useState(
-    isProviderCenterActive
-  );
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (isProviderCenterActive) {
-      setProviderCenterExpanded(true);
+    const open: Record<string, boolean> = {};
+    for (const item of allNavItems) {
+      if (item.children?.some((c) => pathname.startsWith(c.href))) {
+        open[item.name] = true;
+      }
     }
-  }, [pathname, isProviderCenterActive]);
+    if (Object.keys(open).length > 0) {
+      setExpanded((prev) => ({ ...prev, ...open }));
+    }
+  }, [pathname]);
 
   const { data: permData } = useSWR(
     currentUser ? "/admin/rbac/my-permissions" : null,
@@ -196,7 +207,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <div key={item.name} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setProviderCenterExpanded((prev: boolean) => !prev)}
+                    onClick={() => setExpanded((prev) => ({ ...prev, [item.name]: !prev[item.name] }))}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                       isParentActive
                         ? "text-white bg-slate-800/80"
@@ -207,14 +218,14 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       <Icon className={`w-4 h-4 ${isParentActive ? "text-amber-400" : "text-slate-400"}`} />
                       <span>{item.name}</span>
                     </div>
-                    {providerCenterExpanded ? (
+                    {expanded[item.name] ? (
                       <ChevronDown className="w-3.5 h-3.5 text-slate-400 transition-transform" />
                     ) : (
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 transition-transform" />
                     )}
                   </button>
 
-                  {providerCenterExpanded && (
+                 {expanded[item.name] && (
                     <div className="pl-6 pr-1 space-y-1 py-1 border-l border-slate-800 ml-4">
                       {item.children.map((child) => {
                         const isChildActive = pathname === child.href;
