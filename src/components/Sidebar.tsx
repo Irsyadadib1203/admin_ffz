@@ -64,12 +64,6 @@ const allNavItems: NavItem[] = [
       { name: "TopupKuy Center", href: "/topupkuy", resource: "settings" },
     ],
   },
-    {
-    name: "Redeem Center",
-    icon: Ticket,
-    resource: "settings",
-  
-  },
   { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
   { name: "IP Whitelist & Security", href: "/ip-whitelist", icon: ShieldCheck, resource: "ip_whitelist" },
   { name: "Users & Resellers", href: "/users", icon: Users, resource: "users" },
