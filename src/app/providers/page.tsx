@@ -64,15 +64,6 @@ type DigiflazzSettings = {
   secret_configured?: boolean;
 };
 
-type ExcellentStoreSettings = {
-  configured: boolean;
-  name: string;
-  base_url: string;
-  is_active: boolean;
-  api_key_configured: boolean;
-  secret_configured: boolean;
-};
-
 type VocaSettings = {
   configured: boolean;
   name: string;
@@ -81,14 +72,6 @@ type VocaSettings = {
   is_active: boolean;
   secret_key_configured: boolean;
   callback_key_configured: boolean;
-};
-
-type ASMarketSettings = {
-  configured: boolean;
-  name: string;
-  base_url: string;
-  is_active: boolean;
-  api_key_configured: boolean;
 };
 
 type OnoystoreSettings = {
@@ -107,47 +90,6 @@ type TopupKuySettings = {
   api_key_configured: boolean;
 };
 
-// [TAMBAH] tipe, di bawah ASMarketSettings
-type VexagameSettings = {
-  configured: boolean;
-  name: string;
-  base_url: string;
-  is_active: boolean;
-  api_key_configured: boolean;
-  pin_configured: boolean;
-   webhook_secret_configured: boolean; 
-};
-
-type SIPASSettings = {
-  configured: boolean;
-  name: string;
-  base_url: string;
-  member_id: string;
-  is_active: boolean;
-  password_configured: boolean;
-  pin_configured: boolean;
-};
-
-type IDVSettings = {
-  configured: boolean;
-  name: string;
-  base_url: string;
-  partner_id: string;
-  idv_user_id: string;
-  is_active: boolean;
-  secret_token_configured: boolean;
-};
-
-type KiosgamerStatus = {
-  configured: boolean;
-  status: string;
-  username?: string;
-  uid?: string;
-  oauth_expiry_time?: number;
-  has_totp_secret: boolean;
-  last_checked_at?: string | null;
-  last_recovered_at?: string | null;
-};
   const isForeignUnit = (p: ProviderItem) =>
   ["SHELL", "UCOIN"].includes(p.balance_unit?.toUpperCase() ?? "");
 export default function ProvidersPage() {
@@ -208,44 +150,11 @@ const [vocaMerchantId, setVocaMerchantId] = useState("");
 const [vocaSecretKey, setVocaSecretKey] = useState("");
 const [vocaCallbackKey, setVocaCallbackKey] = useState("");
 
-  // ExcellentStore State
-  const [excellent, setExcellent] = useState<ExcellentStoreSettings | null>(null);
-  const [excellentSecret, setExcellentSecret] = useState("");
-
-    // ASMarket State
-  const [asmarket, setAsmarket] = useState<ASMarketSettings | null>(null);
-
   // Onoystore State
   const [onoystore, setOnoystore] = useState<OnoystoreSettings | null>(null);
 
   // TopupKuy State
   const [topupkuy, setTopupkuy] = useState<TopupKuySettings | null>(null);
-
-  // Vexagame State
-  const [vexagame, setVexagame] = useState<VexagameSettings | null>(null);
-  const [vexagamePin, setVexagamePin] = useState(""); 
-  const [vexagameWebhookSecret, setVexagameWebhookSecret] = useState("");
-
-  // SIPAS State
-  const [sipas, setSipas] = useState<SIPASSettings | null>(null);
-  const [sipasMemberId, setSipasMemberId] = useState("");
-  const [sipasPassword, setSipasPassword] = useState("");
-  const [sipasPin, setSipasPin] = useState("");
-
-    // IDV State
-  const [idv, setIdv] = useState<IDVSettings | null>(null);
-  const [idvPartnerId, setIdvPartnerId] = useState("");
-  const [idvSecretToken, setIdvSecretToken] = useState("");
-  const [idvUserId, setIdvUserId] = useState("");
-
-  // Kiosgamer States
-  const [kiosStatus, setKiosStatus] = useState<KiosgamerStatus | null>(null);
-  const [kiosSessionKey, setKiosSessionKey] = useState("");
-  const [kiosTotpSecret, setKiosTotpSecret] = useState("");
-  const [showSessionKey, setShowSessionKey] = useState(false);
-  const [showTotpSecret, setShowTotpSecret] = useState(false);
-  const [isCheckingKios, setIsCheckingKios] = useState(false);
-  const [isRecoveringKios, setIsRecoveringKios] = useState(false);
 
   // Per-card balance loading indicator
   const [checkingBalanceId, setCheckingBalanceId] = useState<number | null>(null);
@@ -350,9 +259,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
     setNotice("");
     setAPIKey("");
     setDigiSecret("");
-	  setExcellentSecret("");
-    setExcellent(null);
-    setAsmarket(null);
     setOnoystore(null);
     setTopupkuy(null);
     setVoca(null);
@@ -360,14 +266,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
     setVocaCallbackKey("");
     setFFZ(null);
     setDigi(null);
-    setVexagame(null);
-    setSipas(null);
-    setVexagamePin("");
-    setVexagameWebhookSecret("");
-    setSipasPassword("");
-    setSipasPin("");
-    setIdv(null);
-    setIdvSecretToken("");
     setName(item.name);
     setBaseURL(item.base_url);
     setIsActive(item.is_active);
@@ -396,39 +294,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       } catch {
         // fallback
       }
-    } else if (code === "EXCELLENTSTORE" || code === "MUMTAZSHOP") {
-      try {
-        const res = await api.get(`/admin/providers/${code.toLowerCase()}`);
-        const data: ExcellentStoreSettings = res.data.data;
-        setExcellent(data);
-        setName(data.name);
-        setBaseURL(data.base_url);
-        setIsActive(data.is_active);
-      } catch {
-        // fallback
-      }
-    } else if (["ASMARKET", "BOSTGAME", "EXCELLSTORE"].includes(code)) {
-      try {
-        const res = await api.get(`/admin/providers/${code.toLowerCase()}`);
-        const data: ASMarketSettings = res.data.data;
-        setAsmarket(data);
-        setName(data.name);
-        setBaseURL(data.base_url);
-        setIsActive(data.is_active);
-      } catch {
-        // fallback
-      }
-    } else if (code === "VEXAGAME") {
-      try {
-        const res = await api.get("/admin/providers/vexagame");
-        const data: VexagameSettings = res.data.data;
-        setVexagame(data);
-        setName(data.name);
-        setBaseURL(data.base_url);
-        setIsActive(data.is_active);
-      } catch {
-        // fallback
-      }
       } else if (code === "ONOYSTORE") {
       try {
         const res = await api.get("/admin/providers/onoystore");
@@ -451,18 +316,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       } catch {
         // fallback
       }
-      } else if (code === "SIPAS") {
-      try {
-        const res = await api.get("/admin/providers/sipas");
-        const data: SIPASSettings = res.data.data;
-        setSipas(data);
-        setName(data.name);
-        setBaseURL(data.base_url);
-        setSipasMemberId(data.member_id || "");
-        setIsActive(data.is_active);
-      } catch {
-        // fallback
-      }
       } else if (code === "VOCA") {
       try {
         const res = await api.get("/admin/providers/voca");
@@ -475,31 +328,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       } catch {
         // fallback
       }
-      } else if (code === "IDV") {
-      try {
-        const res = await api.get("/admin/providers/idv");
-        const data: IDVSettings = res.data.data;
-        setIdv(data);
-        setName(data.name);
-        setBaseURL(data.base_url);
-        setIdvPartnerId(data.partner_id || "");
-        setIdvUserId(data.idv_user_id || "");
-        setIsActive(data.is_active);
-      } catch {
-        // fallback
-      }
-    } else if (code === "KIOSGAMER") {
-      try {
-        const res = await api.get("/admin/kiosgamer/status");
-        setKiosStatus(res.data.data);
-      } catch {
-        // fallback
-      }
-      setKiosSessionKey("");
-      setKiosTotpSecret("");
-      setShowSessionKey(false);
-      setShowTotpSecret(false);
-    }
   };
 
   const saveFFZ = async () => {
@@ -547,53 +375,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
     }
   };
 
-  const saveExcellentStore = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      const code = (selected?.code || "EXCELLENTSTORE").toLowerCase();
-      await api.put(`/admin/providers/${code}`, {
-        name,
-        base_url: baseURL,
-        api_key: apiKey,
-        secret: excellentSecret,
-        is_active: isActive,
-      });
-      setAPIKey("");
-      setExcellentSecret("");
-     const fresh = await api.get(`/admin/providers/${code}`);
-      setExcellent(fresh.data.data);
-      await mutate();
-     setNotice(`Konfigurasi ${selected?.name || "provider"} tersimpan.`);
-    } catch (error: any) {
-      setNotice(error.response?.data?.message || `Gagal menyimpan ${selected?.name || "provider"}.`);
-    } finally {
-      setSaving(false);
-    }
-  };
 
-    const saveASMarket = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      const code = (selected?.code || "ASMARKET").toLowerCase();
-      await api.put(`/admin/providers/${code}`, {
-        name,
-        base_url: baseURL,
-        api_key: apiKey,
-        is_active: isActive,
-      });
-      setAPIKey("");
-      const fresh = await api.get(`/admin/providers/${code}`);
-      setAsmarket(fresh.data.data);
-      await mutate();
-      setNotice(`Konfigurasi ${selected?.name || "provider"} tersimpan.`);
-    } catch (error: any) {
-      setNotice(error.response?.data?.message || `Gagal menyimpan ${selected?.name || "provider"}.`);
-    } finally {
-      setSaving(false);
-    }
-  };
   const saveOnoystore = async () => {
     setSaving(true);
     setNotice("");
@@ -637,80 +419,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       setSaving(false);
     }
   };
-  const saveVexagame = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      await api.put("/admin/providers/vexagame", {
-        name,
-        base_url: baseURL,
-        api_key: apiKey,
-        pin: vexagamePin,
-        webhook_secret: vexagameWebhookSecret, 
-        is_active: isActive,
-      });
-      setAPIKey("");
-      setVexagamePin("");
-      setVexagameWebhookSecret("");
-      const fresh = await api.get("/admin/providers/vexagame");
-      setVexagame(fresh.data.data);
-      await mutate();
-      setNotice("Konfigurasi Vexagame tersimpan.");
-    } catch (error: any) {
-      setNotice(error.response?.data?.message || "Gagal menyimpan Vexagame.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveSIPAS = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      await api.put("/admin/providers/sipas", {
-        name,
-        base_url: baseURL,
-        member_id: sipasMemberId,
-        password: sipasPassword,
-        pin: sipasPin,
-        is_active: isActive,
-      });
-      setSipasPassword("");
-      setSipasPin("");
-      const fresh = await api.get("/admin/providers/sipas");
-      setSipas(fresh.data.data);
-      await mutate();
-      setNotice("Konfigurasi SIPAS tersimpan.");
-    } catch (error: any) {
-      setNotice(error.response?.data?.message || "Gagal menyimpan SIPAS.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-    const saveIDV = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      await api.put("/admin/providers/idv", {
-        name,
-        base_url: baseURL,
-        partner_id: idvPartnerId,
-        secret_token: idvSecretToken,
-        idv_user_id: idvUserId,
-        is_active: isActive,
-      });
-      setIdvSecretToken("");
-      const fresh = await api.get("/admin/providers/idv");
-      setIdv(fresh.data.data);
-      await mutate();
-      setNotice("Konfigurasi IDV tersimpan.");
-    } catch (error: any) {
-      setNotice(error.response?.data?.message || "Gagal menyimpan IDV.");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const saveVoca = async () => {
     setSaving(true);
@@ -737,100 +445,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
     }
   };
 
-  const saveKiosgamer = async () => {
-    setSaving(true);
-    setNotice("");
-    try {
-      if (kiosSessionKey || kiosTotpSecret) {
-        await api.post("/admin/kiosgamer/credentials", {
-          session_key: kiosSessionKey,
-          totp_secret: kiosTotpSecret,
-        });
-      }
-      if (selected) {
-        await api.put(`/admin/providers/${selected.id}`, {
-          name,
-          base_url: baseURL,
-          is_active: isActive,
-        });
-      }
-      setKiosSessionKey("");
-      setKiosTotpSecret("");
-      await mutate();
-      const res = await api.get("/admin/kiosgamer/status");
-      setKiosStatus(res.data.data);
-      setNotice("Konfigurasi dan kredensial Kiosgamer berhasil tersimpan.");
-    } catch (err: any) {
-      setNotice(err.response?.data?.message || "Gagal menyimpan kredensial Kiosgamer.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleKiosHealthCheck = async () => {
-    setIsCheckingKios(true);
-    setNotice("");
-    try {
-      await api.post("/admin/kiosgamer/health-check");
-      const res = await api.get("/admin/kiosgamer/status");
-      setKiosStatus(res.data.data);
-      setNotice("Pengecekan sesi Kiosgamer berhasil: Sesi aktif dan valid!");
-    } catch (err: any) {
-      setNotice(err.response?.data?.message || "Gagal mengecek sesi Kiosgamer.");
-    } finally {
-      setIsCheckingKios(false);
-    }
-  };
-
-  const handleKiosRecover = async () => {
-    setIsRecoveringKios(true);
-    setNotice("");
-    try {
-      await api.post("/admin/kiosgamer/recover");
-      const res = await api.get("/admin/kiosgamer/status");
-      setKiosStatus(res.data.data);
-      setNotice("Sesi Kiosgamer berhasil dipulihkan secara otomatis melalui SSO!");
-    } catch (err: any) {
-      setNotice(err.response?.data?.message || "Pemulihan sesi otomatis Kiosgamer gagal.");
-    } finally {
-      setIsRecoveringKios(false);
-    }
-  };
-
-  const getKiosStatusBadge = (status?: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Sesi Aktif
-          </span>
-        );
-      case "EXPIRED":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            <AlertTriangle className="w-3.5 h-3.5" /> Sesi Kadaluarsa
-          </span>
-        );
-      case "REAUTH_REQUIRED":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/10 border border-rose-500/30 text-rose-400">
-            <AlertCircle className="w-3.5 h-3.5" /> Perlu Login Manual
-          </span>
-        );
-      case "CHALLENGE_REQUIRED":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 border border-purple-500/30 text-purple-400">
-            <ShieldCheck className="w-3.5 h-3.5" /> Perlu Challenge/Captcha
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 border border-slate-700 text-slate-400">
-            <HelpCircle className="w-3.5 h-3.5" /> Belum Dikonfigurasi
-          </span>
-        );
-    }
-  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -1174,294 +788,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
               </div>
             )}
 
-            {/* KIOSGAMER MODAL CONTENT (Mirip Kiosgamer Center) */}
-            {selected.code.toUpperCase() === "KIOSGAMER" && (
-              <div className="space-y-4 text-xs">
-                {/* Session Status & Quick Actions */}
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Status Sesi Garena</span>
-                      <div className="mt-1">{getKiosStatusBadge(kiosStatus?.status)}</div>
-                    </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={handleKiosHealthCheck}
-                        disabled={isCheckingKios}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${isCheckingKios ? "animate-spin" : ""}`} />
-                        <span>{isCheckingKios ? "Memeriksa..." : "Cek Sesi"}</span>
-                      </button>
-
-                      <button
-                        onClick={handleKiosRecover}
-                        disabled={isRecoveringKios}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition disabled:opacity-50"
-                        title="Pulihkan sesi otomatis menggunakan Garena SSO"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>{isRecoveringKios ? "Memulihkan..." : "Pulihkan SSO"}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Summary Account Grid */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Akun / Username:</span>
-                      <span className="font-bold text-white text-xs">{kiosStatus?.username || "-"}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">UID Akun:</span>
-                      <span className="font-mono font-bold text-amber-300 text-xs">{kiosStatus?.uid || "-"}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">TOTP 2FA Secret:</span>
-                      <span className={kiosStatus?.has_totp_secret ? "text-emerald-400 font-semibold" : "text-amber-400"}>
-                        {kiosStatus?.has_totp_secret ? "Terpasang" : "Belum diisi"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Masa Berlaku OAuth:</span>
-                      <span className="text-slate-300 text-[11px]">{formatUnixExpiry(kiosStatus?.oauth_expiry_time)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Credential Inputs */}
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Garena Session Key / Cookie (sso_key)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showSessionKey ? "text" : "password"}
-                      value={kiosSessionKey}
-                      onChange={(e) => setKiosSessionKey(e.target.value)}
-                      placeholder="Tempel session key / cookie Garena baru di sini"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-3 pr-10 font-mono text-xs text-slate-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSessionKey(!showSessionKey)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-white"
-                    >
-                      {showSessionKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    TOTP 2FA Secret Key (16 karakter Base32)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showTotpSecret ? "text" : "password"}
-                      value={kiosTotpSecret}
-                      onChange={(e) => setKiosTotpSecret(e.target.value)}
-                      placeholder={
-                        kiosStatus?.has_totp_secret
-                          ? "Kosongkan untuk mempertahankan TOTP secret saat ini"
-                          : "Contoh: JBSWY3DPEHPK3PXP"
-                      }
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-3 pr-10 font-mono text-xs text-slate-100 uppercase"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowTotpSecret(!showTotpSecret)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-white"
-                    >
-                      {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="rounded text-indigo-600"
-                  />
-                  <span>Aktifkan Provider Kiosgamer</span>
-                </label>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-                  <Link
-                    href="/kiosgamer"
-                    className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-                  >
-                    Buka Kiosgamer Center Lengkap <ExternalLink className="h-3 w-3" />
-                  </Link>
-
-                  <button
-                    onClick={saveKiosgamer}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition"
-                  >
-                    <Save className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : "Simpan Kredensial Kiosgamer"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* EXCELLENTSTORE MODAL CONTENT */}
-           {["EXCELLENTSTORE", "MUMTAZSHOP"].includes(selected.code.toUpperCase()) && (
-              <div className="space-y-4 text-xs">
-                <div><label className="block text-slate-300 font-medium mb-1">Nama Provider</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></div>
-                <div><label className="block text-slate-300 font-medium mb-1">Base URL {selected.name}</label><input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)} placeholder="https://.../api/v1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" /></div>
-                <div><label className="block text-slate-300 font-medium mb-1">API Key {excellent?.api_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}</label><div className="relative"><KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" /><input type="password" value={apiKey} onChange={(e) => setAPIKey(e.target.value)} placeholder={excellent?.api_key_configured ? "Kosongkan untuk mempertahankan API key" : `Masukkan API key ${selected.name}`} className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" /></div></div>
-                <div><label className="block text-slate-300 font-medium mb-1">Webhook Secret {excellent?.secret_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}</label><div className="relative"><ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-500" /><input type="password" value={excellentSecret} onChange={(e) => setExcellentSecret(e.target.value)} placeholder={excellent?.secret_configured ? "Kosongkan untuk mempertahankan secret" : "Masukkan webhook secret"} className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" /></div></div>
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" /><span>Aktifkan {selected.name}</span></label>
-                <div className="flex justify-end pt-2"><button onClick={saveExcellentStore} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition"><Save className="h-4 w-4" /> {saving ? "Menyimpan..." : `Simpan ${selected.name}`}</button></div>
-              </div>
-            )}
-
-            {/* VEXAGAME MODAL CONTENT */}
-            {selected.code.toUpperCase() === "VEXAGAME" && (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Base URL Vexagame</label>
-                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
-                    placeholder="https://api.vexaagen.com/v2"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    API Key Vexagame{" "}
-                    {vexagame?.api_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={apiKey} onChange={(e) => setAPIKey(e.target.value)}
-                      placeholder={vexagame?.api_key_configured ? "Kosongkan untuk mempertahankan API key saat ini" : "Masukkan API key Vexagame"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    PIN Transaksi{" "}
-                    {vexagame?.pin_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={vexagamePin} onChange={(e) => setVexagamePin(e.target.value)}
-                      placeholder={vexagame?.pin_configured ? "Kosongkan untuk mempertahankan PIN saat ini" : "PIN akun Vexagame untuk membayar order"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                  <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Webhook Secret (Callback Token){" "}
-                    {vexagame?.webhook_secret_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={vexagameWebhookSecret} onChange={(e) => setVexagameWebhookSecret(e.target.value)}
-                      placeholder={vexagame?.webhook_secret_configured ? "Kosongkan untuk mempertahankan secret saat ini" : "Kosongkan jika sama dengan API key"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
-                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
-                  <span>Aktifkan Vexagame</span>
-                </label>
-                <div className="flex justify-end pt-2">
-                  <button onClick={saveVexagame} disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
-                    <Save className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : "Simpan Vexagame"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ASMARKET MODAL CONTENT */}
-            {["ASMARKET", "BOSTGAME","EXCELLSTORE"].includes(selected.code.toUpperCase()) && (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
-                  />
-                </div>
-
-                <div>
-                 <label className="block text-slate-300 font-medium mb-1">Base URL {selected.name}</label>
-                  <input
-                    type="url"
-                    value={baseURL}
-                    onChange={(e) => setBaseURL(e.target.value)}
-                    placeholder={
-                      {
-                        BOSTGAME: "https://api.bostgame.com",
-                        EXCELLSTORE: "https://excellstore.id/api",
-                        ASMARKET: "https://api.asmarket.id",
-                      }[selected.code.toUpperCase()] ?? ""
-                    }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    API Key {selected.name}{" "}
-                    {asmarket?.api_key_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setAPIKey(e.target.value)}
-                      placeholder={
-                        asmarket?.api_key_configured
-                          ? "Kosongkan untuk mempertahankan API key saat ini"
-                          : `Masukkan API key ${selected.name}`
-                      }
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100"
-                    />
-                  </div>
-                </div>
-                {selected.code.toUpperCase() === "BOSTGAME" && (
-                  <p className="text-[11px] text-slate-500">
-                    Signature callback BostGame (X-Signature) divalidasi memakai API key di atas, jadi tidak perlu webhook secret terpisah.
-                  </p>
-                )}
-
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="rounded text-indigo-600"
-                  />
-                  <span>Aktifkan {selected.name}</span>
-                </label>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={saveASMarket}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition"
-                  >
-                    <Save className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : `Simpan ${selected.name}`}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* FFZSTORE MODAL CONTENT */}
             {selected.code.toUpperCase() === "FFZSTORE" && (
@@ -1614,121 +941,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
                 </div>
               </div>
             )}
-            {/* SIPAS MODAL CONTENT */}
-            {selected.code.toUpperCase() === "SIPAS" && (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Base URL SIPAS</label>
-                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
-                    placeholder="https://h2h.kioson.my.id"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Member ID</label>
-                  <input value={sipasMemberId} onChange={(e) => setSipasMemberId(e.target.value)}
-                    placeholder="ID Member Mitra"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Password H2H{" "}
-                    {sipas?.password_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={sipasPassword} onChange={(e) => setSipasPassword(e.target.value)}
-                      placeholder={sipas?.password_configured ? "Kosongkan untuk mempertahankan password saat ini" : "Masukkan Password H2H"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    PIN Trx{" "}
-                    {sipas?.pin_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={sipasPin} onChange={(e) => setSipasPin(e.target.value)}
-                      placeholder={sipas?.pin_configured ? "Kosongkan untuk mempertahankan PIN saat ini" : "Masukkan PIN Trx"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
-                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
-                  <span>Aktifkan SIPAS</span>
-                </label>
-                <div className="flex justify-end pt-2">
-                  <button onClick={saveSIPAS} disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
-                    <Save className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : "Simpan SIPAS"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-                        {/* IDV MODAL CONTENT */}
-            {selected.code.toUpperCase() === "IDV" && (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Base URL IDV</label>
-                  <input type="url" value={baseURL} onChange={(e) => setBaseURL(e.target.value)}
-                    placeholder="https://... (URL dari Nuon, tanpa /idv)"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Partner ID</label>
-                  <input value={idvPartnerId} onChange={(e) => setIdvPartnerId(e.target.value)}
-                    inputMode="numeric" placeholder="Contoh: 99999"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Secret Token{" "}
-                    {idv?.secret_token_configured && <span className="text-emerald-400">(sudah tersimpan)</span>}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input type="password" value={idvSecretToken} onChange={(e) => setIdvSecretToken(e.target.value)}
-                      placeholder={idv?.secret_token_configured ? "Kosongkan untuk mempertahankan Secret Token saat ini" : "Secret token dari Nuon"}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 font-mono text-slate-100" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">IDV User ID (akun reseller)</label>
-                  <input value={idvUserId} onChange={(e) => setIdvUserId(e.target.value)}
-                    placeholder="Akun IDV yang saldo Ucoin-nya dipakai belanja"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-slate-100" />
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  IDV tidak menyediakan callback. Status transaksi dipantau lewat cek status/reconciler.
-                  Pastikan IP server sudah di-whitelist di Nuon, dan kode produk nominal berformat{" "}
-                  <code className="font-mono text-indigo-400">product:item</code> (contoh{" "}
-                  <code className="font-mono text-indigo-400">free_fire:freefire_5</code>).
-                </p>
-                <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 cursor-pointer">
-                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-indigo-600" />
-                  <span>Aktifkan IDV</span>
-                </label>
-                <div className="flex justify-end pt-2">
-                  <button onClick={saveIDV} disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60 transition">
-                    <Save className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : "Simpan IDV"}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* VOCA MODAL CONTENT */}
             {selected.code.toUpperCase() === "VOCA" && (
@@ -1790,19 +1002,10 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
 
             {/* OTHER / CUSTOM PROVIDER FALLBACK */}
             {selected.code.toUpperCase() !== "DIGIFLAZZ" &&
-              selected.code.toUpperCase() !== "KIOSGAMER" &&
               selected.code.toUpperCase() !== "FFZSTORE" &&
-              selected.code.toUpperCase() !== "EXCELLENTSTORE" && 
-              selected.code.toUpperCase() !== "MUMTAZSHOP" &&
-              selected.code.toUpperCase() !== "BOSTGAME" &&
               selected.code.toUpperCase() !== "ONOYSTORE" &&
-              selected.code.toUpperCase() !== "TOPUPKUY" &&
-               selected.code.toUpperCase() !== "ASMARKET" && 
-               selected.code.toUpperCase() !== "VOCA" &&
-               selected.code.toUpperCase() !== "EXCELLSTORE" &&
-               selected.code.toUpperCase() !== "VEXAGAME" &&
-              selected.code.toUpperCase() !== "SIPAS" &&
-               selected.code.toUpperCase() !== "IDV" && (  
+              selected.code.toUpperCase() !== "TOPUPKUY" && 
+               selected.code.toUpperCase() !== "VOCA" &&(  
                 <div className="space-y-4 text-xs">
                   <div>
                     <label className="block text-slate-300 font-medium mb-1">Nama Provider</label>
@@ -1867,4 +1070,5 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       )}
     </div>
   );
+}
 }

@@ -30,7 +30,7 @@ const { data: providerList } = useSWR<any[]>("/admin/providers", fetcher, {
   refreshInterval: 15000,
 });
 
-// Saldo Shell (Kiosgamer) tidak sebanding dengan Rupiah, jadi tidak dijumlahkan
+
 const idrProviders = (providerList ?? []).filter(
   (p) => String(p.balance_unit || "IDR").toUpperCase() !== "SHELL"
 );
