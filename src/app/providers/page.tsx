@@ -64,6 +64,7 @@ type DigiflazzSettings = {
   secret_configured?: boolean;
 };
 
+
 type VocaSettings = {
   configured: boolean;
   name: string;
@@ -73,6 +74,7 @@ type VocaSettings = {
   secret_key_configured: boolean;
   callback_key_configured: boolean;
 };
+
 
 type OnoystoreSettings = {
   configured: boolean;
@@ -90,8 +92,6 @@ type TopupKuySettings = {
   api_key_configured: boolean;
 };
 
-  const isForeignUnit = (p: ProviderItem) =>
-  ["SHELL", "UCOIN"].includes(p.balance_unit?.toUpperCase() ?? "");
 export default function ProvidersPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -107,8 +107,11 @@ export default function ProvidersPage() {
   );
   const sortedProviders = useMemo(() => {
     if (!providers) return [];
+    const isShell = (p: ProviderItem) => p.balance_unit?.toUpperCase() === "SHELL";
     return [...providers].sort((a, b) => {
-      const unitDiff = Number(isForeignUnit(a)) - Number(isForeignUnit(b));
+      // Provider ber-satuan Shell (Kiosgamer) tidak sebanding dengan Rupiah,
+      // jadi ditaruh paling bawah dan diurutkan di antara sesamanya.
+      const unitDiff = Number(isShell(a)) - Number(isShell(b));
       if (unitDiff !== 0) return unitDiff;
       const diff = (b.balance ?? 0) - (a.balance ?? 0);
       if (diff !== 0) return diff;
@@ -191,19 +194,24 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
   };
 
   const formatBalance = (val?: number, unit?: string) => {
-    const u = unit?.toUpperCase();
-    if (u === "SHELL") return `${(val || 0).toLocaleString("id-ID")} Shell`;
-    if (u === "UCOIN") return `${(val || 0).toLocaleString("id-ID")} Ucoin`;
+    if (unit?.toUpperCase() === "SHELL") {
+      return `${(val || 0).toLocaleString("id-ID")} Shell`;
+    }
     return formatRupiah(val);
   };
 
   const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleString("id-ID", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  };
+  if (!dateStr) return "-";
+  return new Date(dateStr).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+};
 
   const formatUnixExpiry = (expiryUnix?: number) => {
     if (!expiryUnix || expiryUnix <= 0) return "-";
@@ -328,6 +336,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       } catch {
         // fallback
       }
+    } 
   };
 
   const saveFFZ = async () => {
@@ -374,7 +383,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       setSaving(false);
     }
   };
-
 
   const saveOnoystore = async () => {
     setSaving(true);
@@ -788,8 +796,6 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
               </div>
             )}
 
-
-
             {/* FFZSTORE MODAL CONTENT */}
             {selected.code.toUpperCase() === "FFZSTORE" && (
               <div className="space-y-4 text-xs">
@@ -1004,7 +1010,7 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
             {selected.code.toUpperCase() !== "DIGIFLAZZ" &&
               selected.code.toUpperCase() !== "FFZSTORE" &&
               selected.code.toUpperCase() !== "ONOYSTORE" &&
-              selected.code.toUpperCase() !== "TOPUPKUY" && 
+              selected.code.toUpperCase() !== "TOPUPKUY" &&
                selected.code.toUpperCase() !== "VOCA" &&(  
                 <div className="space-y-4 text-xs">
                   <div>
@@ -1070,5 +1076,4 @@ const [vocaCallbackKey, setVocaCallbackKey] = useState("");
       )}
     </div>
   );
-}
 }

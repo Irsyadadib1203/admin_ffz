@@ -59,7 +59,6 @@ const allNavItems: NavItem[] = [
     icon: Layers,
     resource: "settings",
     children: [
-      { name: "Kiosgamer Center", href: "/kiosgamer", resource: "kiosgamer" },
       { name: "Digiflazz Center", href: "/digiflazz", resource: "digiflazz" },
       { name: "Voca Center", href: "/voca", resource: "settings" },
       { name: "TopupKuy Center", href: "/topupkuy", resource: "settings" },
@@ -69,9 +68,7 @@ const allNavItems: NavItem[] = [
     name: "Redeem Center",
     icon: Ticket,
     resource: "settings",
-    children: [
-      { name: "IDV Redeem", href: "/redeem-center/idv", resource: "settings" },
-    ],
+  
   },
   { name: "Mata Uang & Kurs", href: "/currencies", icon: Coins, resource: "settings" },
   { name: "IP Whitelist & Security", href: "/ip-whitelist", icon: ShieldCheck, resource: "ip_whitelist" },
